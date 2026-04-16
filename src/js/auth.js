@@ -284,10 +284,21 @@ const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.goo
 
 function _initGIS() {
   window.google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback:  window.handleGoogleCredential,
-    ux_mode:   'popup',
+    client_id:   GOOGLE_CLIENT_ID,
+    callback:    window.handleGoogleCredential,
+    ux_mode:     'popup',
     auto_select: false,
+  });
+}
+
+function _loadGIS() {
+  return new Promise((resolve) => {
+    if (window.google?.accounts?.id) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = resolve;
+    script.onerror = resolve; // resolve anyway — button will show error on click
+    document.head.appendChild(script);
   });
 }
 
@@ -297,12 +308,10 @@ function initGoogle() {
   const trigger     = btnLogin || btnRegister;
   if (!trigger) return;
 
-  // Initialize GIS as soon as the library is ready
-  if (window.google?.accounts?.id) {
-    _initGIS();
-  } else {
-    window.onGoogleLibraryLoad = _initGIS;
-  }
+  // Load GIS dynamically AFTER handleGoogleCredential is already on window
+  _loadGIS().then(() => {
+    if (window.google?.accounts?.id) _initGIS();
+  });
 
   trigger.addEventListener('click', () => {
     if (window.google?.accounts?.id) {
