@@ -5,6 +5,7 @@
  * Inspired by Linear / ClickUp / DesignCollab style.
  */
 
+import { localFetch as fetch } from './localApi.js';
 import { updateStats } from './stats.js';
 import { initExport } from './export.js';
 import { initPomodoro } from './pomodoro.js';

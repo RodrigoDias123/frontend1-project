@@ -8,6 +8,8 @@
  *   - Remove member button (cannot remove self)
  */
 
+import { localFetch as fetch } from './localApi.js';
+
 const SESSION_KEY = 'devtasks_user';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

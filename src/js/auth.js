@@ -1,9 +1,11 @@
 /**
  * auth.js — Registration, login, and session management.
  *
- * Uses json-server /users endpoint.
+ * Uses localStorage via localApi (GitHub Pages compatible).
  * Stores session in localStorage (key: devtasks_user) — persists across browser restarts.
  */
+
+import { localFetch as fetch } from './localApi.js';
 
 const BASE = '/users';
 const SESSION_KEY = 'devtasks_user';

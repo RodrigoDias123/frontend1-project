@@ -7,6 +7,8 @@
  *   3 — Admin account + submit
  */
 
+import { localFetch as fetch } from './localApi.js';
+
 const SESSION_KEY = 'devtasks_user';
 
 // ── Plan config ───────────────────────────────────────────────────────────────

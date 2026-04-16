@@ -1,7 +1,9 @@
 /**
- * api.js — HTTP communication layer (json-server on port 3001)
+ * api.js — Data layer (localStorage via localApi, compatible with GitHub Pages)
  * All functions throw on non-OK responses so callers can handle errors.
  */
+
+import { localFetch as fetch } from './localApi.js';
 
 const BASE_URL = '/tasks';
 
