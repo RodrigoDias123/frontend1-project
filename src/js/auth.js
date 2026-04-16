@@ -280,12 +280,29 @@ window.handleGoogleCredential = async function(response) {
   window.location.href = user.organizationId ? 'app-enterprise.html' : 'app.html';
 };
 
+const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
+
+function _initGIS() {
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback:  window.handleGoogleCredential,
+    ux_mode:   'popup',
+    auto_select: false,
+  });
+}
+
 function initGoogle() {
   const btnLogin    = document.getElementById('btn-google-login');
   const btnRegister = document.getElementById('btn-google-register');
-
-  const trigger = btnLogin || btnRegister;
+  const trigger     = btnLogin || btnRegister;
   if (!trigger) return;
+
+  // Initialize GIS as soon as the library is ready
+  if (window.google?.accounts?.id) {
+    _initGIS();
+  } else {
+    window.onGoogleLibraryLoad = _initGIS;
+  }
 
   trigger.addEventListener('click', () => {
     if (window.google?.accounts?.id) {
