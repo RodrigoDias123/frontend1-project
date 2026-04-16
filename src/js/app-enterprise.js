@@ -442,14 +442,22 @@ async function _loadProjects() {
 // ── Sidebar nav & counts ──────────────────────────────────────────────────────
 
 function _bindSidebarNav() {
-  document.querySelectorAll('[data-filter]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter]').forEach(b =>
-        b.classList.remove('ent-nav-item--active'));
-      btn.classList.add('ent-nav-item--active');
-      _filter = btn.dataset.filter;
-      _renderFeed();
-    });
+  // Use event delegation on the sidebar to avoid duplicate listeners
+  // when _renderSidebarLabels / _renderSidebarProjects re-render their lists
+  const sidebar = document.querySelector('.ent-sidebar');
+  if (!sidebar || sidebar._navBound) return;
+  sidebar._navBound = true;
+  sidebar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-filter]');
+    if (!btn) return;
+    document.querySelectorAll('[data-filter]').forEach(b =>
+      b.classList.remove('ent-nav-item--active'));
+    btn.classList.add('ent-nav-item--active');
+    _filter = btn.dataset.filter;
+    _switchView('feed');
+    document.querySelectorAll('.ent-view-tab').forEach(b => b.classList.remove('ent-view-tab--active'));
+    document.querySelector('.ent-view-tab[data-view="feed"]')?.classList.add('ent-view-tab--active');
+    _renderFeed();
   });
 }
 
@@ -478,7 +486,6 @@ function _renderSidebarLabels() {
       </button>
     </li>`).join('');
 
-  _bindSidebarNav();
   _updateSidebarCounts();
 }
 
@@ -1395,6 +1402,10 @@ function _renderNotifications() {
 
   listEl.querySelectorAll('.ent-notif-item').forEach(el => {
     el.addEventListener('click', () => {
+      // Close the notification dropdown
+      const dropdownEl = _el('btn-ent-notifications');
+      if (dropdownEl) bootstrap.Dropdown.getInstance(dropdownEl)?.hide();
+
       _switchView('feed');
       document.querySelectorAll('.ent-view-tab').forEach(b => b.classList.remove('ent-view-tab--active'));
       document.querySelector('.ent-view-tab[data-view="feed"]')?.classList.add('ent-view-tab--active');
@@ -1454,9 +1465,6 @@ function _renderSidebarProjects() {
       ${_session.role === 'admin' ? `<button class="ent-project-edit-btn" data-project-id="${p.id}" title="Editar projecto"><i class="bi bi-pencil-fill"></i></button>` : ''}
     </li>`;
   }).join('');
-
-  // Rebind sidebar nav to include project filters
-  _bindSidebarNav();
 
   // Edit buttons
   container.querySelectorAll('.ent-project-edit-btn').forEach(btn => {
