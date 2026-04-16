@@ -1,0 +1,639 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   features.css — Styles for advanced features:
+   Markdown, Command Palette, Pomodoro, Automations, Deep Links, Labels,
+   Git Tools, Deep Work, Estimates, Post-mortem, Tech Debt, Org Users
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Org Users list ───────────────────────────────────────────────────────── */
+
+.org-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.org-user-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--bg-surface, #161b22);
+  border: 1px solid var(--border-color, #30363d);
+  transition: background 0.15s;
+}
+
+.org-user-row:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.org-user-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #58a6ff, #a371f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.org-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.org-user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-user-email {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-user-role {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Deep Work Overlay ────────────────────────────────────────────────────── */
+
+.deep-work-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #0d1117;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.deep-work-content {
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.deep-work-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.deep-work-task {
+  border: 1px solid #30363d;
+  border-radius: .75rem;
+  padding: 1.5rem;
+  background: #161b22;
+}
+
+.deep-work-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e6edf3;
+  margin: 0 0 .5rem;
+}
+
+.deep-work-desc {
+  font-size: .9rem;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.deep-work-timer {
+  text-align: center;
+}
+
+.dw-timer-label {
+  font-size: .75rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: .25rem;
+}
+
+.dw-timer-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #58a6ff;
+  letter-spacing: .05em;
+  font-family: 'Fira Code', ui-monospace, monospace;
+}
+
+.deep-work-snapshot {
+  border: 1px solid #30363d;
+  border-radius: .75rem;
+  padding: 1.25rem;
+  background: #161b22;
+}
+
+/* Prevent scrolling on board when deep work is active */
+body.deep-work-active { overflow: hidden; }
+
+/* ── Markdown Rendered Output ─────────────────────────────────────────────── */
+
+.md-preview {
+  font-size: .875rem;
+  line-height: 1.75;
+  color: #c9d1d9;
+  word-break: break-word;
+}
+
+.md-preview h1, .md-preview h2, .md-preview h3,
+.md-preview h4, .md-preview h5, .md-preview h6 {
+  margin-top: 1em;
+  margin-bottom: .5em;
+  font-weight: 600;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: .25em;
+}
+.md-preview h1 { font-size: 1.35em; }
+.md-preview h2 { font-size: 1.15em; }
+.md-preview h3 { font-size: 1.05em; }
+.md-preview p  { margin-bottom: .75em; }
+
+.md-preview ul, .md-preview ol {
+  padding-left: 1.5em;
+  margin-bottom: .75em;
+}
+.md-preview li input[type="checkbox"] { margin-right: .4em; }
+
+.md-preview code {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: .3rem;
+  padding: .1em .35em;
+  font-size: .85em;
+  font-family: 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+}
+
+.md-preview pre {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: .5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin-bottom: .75em;
+}
+.md-preview pre code { background: none; border: none; padding: 0; font-size: .82em; }
+
+.md-preview blockquote {
+  border-left: 3px solid #30363d;
+  padding-left: 1em;
+  color: #8b949e;
+  margin: .75em 0;
+}
+
+.md-preview table { border-collapse: collapse; width: 100%; margin-bottom: .75em; font-size: .8em; }
+.md-preview th, .md-preview td { border: 1px solid #30363d; padding: .4em .75em; text-align: left; }
+.md-preview th { background: #161b22; font-weight: 600; }
+.md-preview tr:nth-child(even) { background: rgba(22,27,34,.5); }
+
+.md-preview a { color: #58a6ff; text-decoration: none; }
+.md-preview a:hover { text-decoration: underline; }
+.md-preview hr { border-color: #30363d; margin: 1em 0; }
+
+/* ── Markdown Editor Tabs ─────────────────────────────────────────────────── */
+
+.md-tabs {
+  display: flex;
+  gap: .25rem;
+}
+
+.md-tab-btn {
+  font-size: .75rem;
+  padding: .15rem .6rem;
+  border-radius: .3rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8b949e;
+  cursor: pointer;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.md-tab-btn.active {
+  background: #21262d;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+
+.md-preview-pane {
+  border: 1px solid #30363d;
+  border-radius: .375rem;
+  padding: .75rem;
+  min-height: 100px;
+  background: #0d1117;
+}
+
+/* ── Labels ───────────────────────────────────────────────────────────────── */
+
+.label-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: .06rem .4rem;
+  border-radius: 2rem;
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(88,166,255,.15);
+  color: #58a6ff;
+  border: 1px solid rgba(88,166,255,.25);
+}
+
+/* ── Dependency Badges ────────────────────────────────────────────────────── */
+
+.blocked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #f85149;
+  background: rgba(248,81,73,.12);
+  border: 1px solid rgba(248,81,73,.3);
+  border-radius: 2rem;
+  padding: .06rem .4rem;
+}
+
+/* ── Time Badge ───────────────────────────────────────────────────────────── */
+
+.time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .68rem;
+  color: #8b949e;
+}
+
+/* ── Deep Link Icons (on card) ────────────────────────────────────────────── */
+
+.card-links {
+  display: flex;
+  gap: .3rem;
+  flex-wrap: wrap;
+  margin-top: .3rem;
+}
+.card-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: .25rem;
+  background: #30363d;
+  color: #8b949e;
+  font-size: .7rem;
+  text-decoration: none;
+  transition: background .12s, color .12s;
+}
+.card-link-icon:hover { background: #58a6ff; color: #fff; }
+
+/* ── Link Fields in Modal ─────────────────────────────────────────────────── */
+
+.link-field-group { display: grid; gap: .75rem; }
+.link-field-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  align-items: start;
+  gap: .5rem;
+}
+.link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1.85rem; /* align with input */
+  font-size: 1rem;
+}
+
+/* ── Command Palette ──────────────────────────────────────────────────────── */
+
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(1,4,9,.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+}
+
+.cmd-palette-box {
+  width: min(600px, 94vw);
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: .75rem;
+  box-shadow: 0 16px 48px rgba(0,0,0,.6);
+  overflow: hidden;
+}
+
+.cmd-palette-search {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid #21262d;
+}
+.cmd-search-icon { color: #8b949e; font-size: 1rem; flex-shrink: 0; }
+
+#cmd-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #e6edf3;
+  font-size: .95rem;
+}
+#cmd-input::placeholder { color: #8b949e; }
+
+.cmd-esc {
+  font-size: .7rem;
+  padding: .1rem .35rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: .25rem;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+
+.cmd-list {
+  list-style: none;
+  margin: 0;
+  padding: .3rem;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .5rem .75rem;
+  border-radius: .4rem;
+  cursor: pointer;
+  transition: background .08s;
+}
+.cmd-item--active, .cmd-item:hover { background: #21262d; }
+.cmd-icon { color: #8b949e; font-size: .9rem; width: 1.1rem; text-align: center; }
+.cmd-label { font-size: .875rem; flex: 1; color: #e6edf3; }
+.cmd-kbd {
+  font-size: .68rem;
+  padding: .1rem .35rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: .25rem;
+  color: #8b949e;
+}
+
+.cmd-palette-footer {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: .45rem 1rem;
+  border-top: 1px solid #21262d;
+  font-size: .7rem;
+  color: #8b949e;
+}
+.cmd-palette-footer kbd {
+  font-size: .65rem;
+  padding: .05rem .3rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: .2rem;
+}
+
+/* ── Pomodoro Widget ──────────────────────────────────────────────────────── */
+
+.pomo-widget {
+  position: fixed;
+  bottom: 5.5rem;
+  right: 1.5rem;
+  z-index: 1050;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: .75rem;
+  padding: .9rem;
+  width: 168px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  user-select: none;
+}
+
+.pomo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .4rem;
+}
+.pomo-mode {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #58a6ff;
+}
+.pomo-btn-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: .85rem;
+}
+.pomo-btn-close:hover { color: #f85149; }
+
+.pomo-body { text-align: center; }
+
+.pomo-ring-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: .2rem;
+}
+.pomo-ring-svg { width: 80px; height: 80px; transform: rotate(-90deg); }
+.pomo-ring-bg  { fill: none; stroke: #21262d; stroke-width: 5; }
+.pomo-ring-progress {
+  fill: none;
+  stroke: #58a6ff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .5s ease;
+}
+.pomo-time {
+  position: absolute;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #e6edf3;
+  letter-spacing: -.02em;
+}
+.pomo-task-name {
+  font-size: .68rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  margin: 0 auto .4rem;
+}
+
+.pomo-controls { display: flex; justify-content: center; gap: .5rem; margin-top: .5rem; }
+.pomo-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: .4rem;
+  color: #c9d1d9;
+  cursor: pointer;
+  padding: .25rem .65rem;
+  font-size: .9rem;
+  transition: background .12s, color .12s;
+}
+.pomo-btn:hover { background: #30363d; color: #58a6ff; }
+
+/* ── Automations ──────────────────────────────────────────────────────────── */
+
+.rule-form-grid { display: grid; gap: .75rem; }
+
+/* ── DAG View ─────────────────────────────────────────────────────────────── */
+
+.dag-node {
+  padding: .5rem .75rem;
+  border: 1px solid #30363d;
+  border-radius: .5rem;
+  background: #161b22;
+  font-size: .82rem;
+}
+.dag-node--blocked { border-color: rgba(248,81,73,.4); }
+.dag-node--done    { opacity: .55; }
+.dag-arrow {
+  color: #8b949e;
+  font-size: .75rem;
+  padding: .25rem 0 .25rem 1.5rem;
+}
+
+/* ── User Avatar (header button) ──────────────────────────────────────────── */
+
+.btn-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid #30363d;
+  background: linear-gradient(135deg, #58a6ff, #a371f7);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color .15s, transform .15s;
+  flex-shrink: 0;
+}
+
+.btn-user-avatar:hover {
+  border-color: #58a6ff;
+  transform: scale(1.08);
+}
+
+/* ── Profile Modal ─────────────────────────────────────────────────────────── */
+
+.profile-hero {
+  padding: .5rem 0;
+}
+
+/* Clickable avatar wrapper */
+.profile-avatar-wrap {
+  position: relative;
+  display: block;
+  width: 4.5rem;
+  cursor: pointer;
+}
+
+.profile-avatar-wrap:hover .profile-avatar-lg {
+  filter: brightness(.55);
+}
+
+.profile-avatar-edit-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.3rem;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.profile-avatar-wrap:hover .profile-avatar-edit-icon {
+  opacity: 1;
+}
+
+.profile-avatar-lg {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #58a6ff, #a371f7);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  border: 3px solid #30363d;
+  user-select: none;
+  overflow: hidden;
+  transition: filter .2s;
+}
+
+.profile-stat-box {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: .75rem;
+  padding: .75rem .5rem;
+}
+
+.profile-stat-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #e6edf3;
+}
+
+.profile-stat-label {
+  font-size: .65rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: .15rem;
+}
+
+/* details/summary reset */
+.modal details > summary::-webkit-details-marker { display: none; }
+.modal details[open] summary .bi-chevron-down { transform: rotate(180deg); }
+.modal details summary .bi-chevron-down { transition: transform .2s; }
