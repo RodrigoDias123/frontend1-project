@@ -217,6 +217,7 @@ window.handleGoogleCredential = async function(response) {
   }
 
   const { sub: googleId, email, name, picture } = payload;
+  const mode = document.getElementById('login-mode')?.value ?? 'solo';
 
   // Find existing user by googleId or email
   const byGoogleId = await fetch(`/users?googleId=${encodeURIComponent(googleId)}`).then(r => r.json()).catch(() => []);
@@ -228,7 +229,11 @@ window.handleGoogleCredential = async function(response) {
   }
 
   if (!user) {
-    // First Google login — auto-create account
+    // First Google login — auto-create account (only in solo mode)
+    if (mode === 'enterprise') {
+      showError('Não existe conta empresarial associada a este email Google. Registe uma organização primeiro.');
+      return;
+    }
     const res = await fetch('/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,13 +241,25 @@ window.handleGoogleCredential = async function(response) {
     });
     if (!res.ok) { showError('Erro ao criar conta Google. Tente novamente.'); return; }
     user = await res.json();
-  } else if (!user.googleId) {
-    // Link Google to existing email account
-    await fetch(`/users/${user.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...user, googleId, picture }),
-    });
+  } else {
+    // Link Google to existing account if not yet linked
+    if (!user.googleId) {
+      await fetch(`/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...user, googleId, picture }),
+      });
+    }
+
+    // Validate mode vs account type
+    if (mode === 'enterprise' && !user.organizationId) {
+      showError('Esta conta Google não está associada a nenhuma organização. Use o acesso Pessoal.');
+      return;
+    }
+    if (mode === 'solo' && user.organizationId) {
+      showError('Esta é uma conta empresarial. Por favor use o modo Empresarial para entrar.');
+      return;
+    }
   }
 
   localStorage.setItem(SESSION_KEY, JSON.stringify({
