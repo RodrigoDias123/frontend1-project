@@ -53,10 +53,49 @@ const INDUSTRY_LABELS = {
   other:         'Outra',
 };
 
+// ── Google OAuth ──────────────────────────────────────────────────────────────
+
+const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
+
+function _openGooglePopup() {
+  const redirectUri = 'https://rodrigodias123.github.io/frontend1-project/google-callback.html';
+  const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  redirectUri,
+    response_type: 'token',
+    scope:         'openid email profile',
+    prompt:        'select_account',
+  });
+
+  const popup = window.open(authUrl, 'google-oauth-enterprise', 'width=500,height=600,scrollbars=yes,resizable=yes');
+  if (!popup) throw new Error('popup_blocked');
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(poll);
+      window.removeEventListener('message', onMessage);
+      fn();
+    };
+    const onMessage = (e) => {
+      if (e.origin !== location.origin) return;
+      if (e.data?.type === 'google-auth-success') finish(() => resolve(e.data.user));
+      if (e.data?.type === 'google-auth-error')   finish(() => reject(new Error(e.data.error)));
+    };
+    const poll = setInterval(() => {
+      if (popup.closed) finish(() => reject(new Error('cancelled')));
+    }, 500);
+    window.addEventListener('message', onMessage);
+  });
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let _currentStep = 1;
 let _selectedPlan = 'business';
+let _googleData = null; // set when admin uses Google Sign-In
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
@@ -88,16 +127,25 @@ function _setLoading(btn, on) {
 
 function _goTo(step) {
   _hideError();
+  // Hide all sections
+  ['step-1', 'step-2', 'step-3', 'step-team'].forEach((id) => {
+    _el(id)?.classList.add('d-none');
+  });
+  // Show target
+  _el(`step-${step}`)?.classList.remove('d-none');
+
+  // Update sidebar nav (only for numeric steps)
   [1, 2, 3].forEach((n) => {
-    const sec  = _el(`step-${n}`);
-    const nav  = document.querySelector(`[data-step="${n}"]`);
-    if (sec) sec.classList.toggle('d-none', n !== step);
+    const nav = document.querySelector(`[data-step="${n}"]`);
     if (nav) {
       nav.classList.remove('enterprise-step--active', 'enterprise-step--done');
-      if (n === step) nav.classList.add('enterprise-step--active');
-      if (n < step)  nav.classList.add('enterprise-step--done');
+      const active = step === n || step === 'team';
+      if (active && n === 1) nav.classList.add('enterprise-step--done');
+      if (step === n) nav.classList.add('enterprise-step--active');
+      if (typeof step === 'number' && n < step) nav.classList.add('enterprise-step--done');
     }
   });
+
   _currentStep = step;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -269,10 +317,12 @@ function _validateAdminForm() {
 
   if (!name.value.trim() || name.value.trim().length < 2) { _invalidate(name, null); ok = false; }
   if (!email.value.trim() || !email.checkValidity()) { _invalidate(email, null); ok = false; }
-  if (pw.value.length < 8) { _invalidate(pw, 'Mínimo 8 caracteres.'); ok = false; }
-  if (pw.value !== pwConf.value) {
-    _invalidate(pwConf, 'As palavras-passe não coincidem.');
-    ok = false;
+  if (!_googleData) {
+    if (pw.value.length < 8) { _invalidate(pw, 'Mínimo 8 caracteres.'); ok = false; }
+    if (pw.value !== pwConf.value) {
+      _invalidate(pwConf, 'As palavras-passe não coincidem.');
+      ok = false;
+    }
   }
   if (!terms.checked) {
     terms.classList.add('is-invalid');
@@ -323,6 +373,10 @@ async function _submitEnterprise() {
       return;
     }
 
+    // If Google → use Google name/email (may differ if user edited after OAuth)
+    const googleId = _googleData?.sub ?? null;
+    const picture  = _googleData?.picture ?? null;
+
     // Build org payload
     const seats       = parseInt(_el('company-seats')?.value ?? PLANS[_selectedPlan].seats, 10);
     const orgPayload  = {
@@ -354,7 +408,9 @@ async function _submitEnterprise() {
     const userPayload = {
       name:           adminName,
       email:          adminEmail,
-      password,
+      password:       _googleData ? null : password,
+      googleId,
+      picture,
       role:           'admin',
       jobTitle:       _el('admin-role')?.value || null,
       organizationId: orgId,
@@ -396,6 +452,102 @@ async function _submitEnterprise() {
   }
 }
 
+// ── Team fast-track submit ────────────────────────────────────────────────────
+
+async function _submitTeam() {
+  const btn = _el('btn-register-team');
+  _setLoading(btn, true);
+  _hideError();
+
+  const companyName = _el('team-company-name')?.value.trim();
+  const adminName   = _el('team-admin-name')?.value.trim()  ?? (_googleData?.name  ?? '');
+  const adminEmail  = _el('team-admin-email')?.value.trim() ?? (_googleData?.email ?? '');
+  const password    = _el('team-admin-password')?.value     ?? '';
+  const terms       = _el('team-accept-terms');
+
+  // Validation
+  let ok = true;
+  const nameEl = _el('team-company-name');
+  const aNameEl = _el('team-admin-name');
+  const aEmailEl = _el('team-admin-email');
+  const aPwEl = _el('team-admin-password');
+
+  [nameEl, aNameEl, aEmailEl].forEach(el => el?.classList.remove('is-invalid'));
+  if (!companyName || companyName.length < 2) { nameEl?.classList.add('is-invalid'); ok = false; }
+  if (!adminName || adminName.length < 2)     { aNameEl?.classList.add('is-invalid'); ok = false; }
+  if (!adminEmail || !aEmailEl?.checkValidity()) { aEmailEl?.classList.add('is-invalid'); ok = false; }
+  if (!_googleData) {
+    aPwEl?.classList.remove('is-invalid');
+    if (password.length < 6) { aPwEl?.classList.add('is-invalid'); ok = false; }
+  }
+  if (!terms?.checked) {
+    terms?.classList.add('is-invalid');
+    _showError('Deve aceitar os Termos de Serviço para continuar.');
+    ok = false;
+  }
+  if (!ok) { _setLoading(btn, false); return; }
+
+  try {
+    // Check email not already taken
+    const checkRes = await fetch(`/users?email=${encodeURIComponent(adminEmail)}`);
+    if (!checkRes.ok) throw new Error('Erro no servidor.');
+    const existing = await checkRes.json();
+    if (existing.length > 0) {
+      _showError('Já existe uma conta com este email. Faça login ou use outro email.');
+      _setLoading(btn, false);
+      return;
+    }
+
+    // Create organization
+    const orgRes = await fetch('/organizations', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:      companyName,
+        plan:      'team',
+        seats:     5,
+        createdAt: new Date().toISOString(),
+      }),
+    });
+    if (!orgRes.ok) throw new Error('Erro ao criar organização.');
+    const org = await orgRes.json();
+
+    // Create admin user
+    const userRes = await fetch('/users', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:           adminName,
+        email:          adminEmail,
+        password:       _googleData ? null : password,
+        googleId:       _googleData?.sub    ?? null,
+        picture:        _googleData?.picture ?? null,
+        role:           'admin',
+        plan:           'team',
+        organizationId: org.id,
+        createdAt:      new Date().toISOString(),
+      }),
+    });
+    if (!userRes.ok) throw new Error('Erro ao criar conta.');
+    const user = await userRes.json();
+
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      id: user.id, name: user.name, email: user.email,
+      role: 'admin', plan: 'team', organizationId: org.id,
+    }));
+
+    _el('step-team').classList.add('d-none');
+    _el('step-success').classList.remove('d-none');
+    _el('success-company-name').textContent = companyName;
+    setTimeout(() => { location.href = 'app-enterprise.html'; }, 3000);
+
+  } catch (err) {
+    _showError(err?.message ?? 'Ocorreu um erro inesperado. Tente novamente.');
+  } finally {
+    _setLoading(btn, false);
+  }
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 function init() {
@@ -403,15 +555,66 @@ function init() {
   _initSeatsControl();
   _initPasswordStrength();
 
-  // Step 1 → 2
+  // Step 1 → route by plan
   _el('btn-step1-next')?.addEventListener('click', () => {
     const selected = document.querySelector('input[name="plan"]:checked');
     if (!selected) { _showError('Por favor selecione um plano.'); return; }
     _selectedPlan = selected.value;
     _updatePlanVisuals();
-    // Show seats row in step 2 for paid plans
-    _el('seats-row')?.classList.toggle('d-none', _selectedPlan === 'team');
-    _goTo(2);
+    if (_selectedPlan === 'team') {
+      // Fast-track: skip all the company details
+      _googleData = null;
+      _el('google-enterprise-badge')?.classList.add('d-none');
+      _el('btn-google-enterprise')?.classList.remove('d-none');
+      _el('team-pw-section')?.classList.remove('d-none');
+      _el('team-company-name').value = '';
+      _el('team-admin-name').value   = '';
+      _el('team-admin-email').value  = '';
+      _el('team-admin-password').value = '';
+      _goTo('team');
+    } else {
+      _el('seats-row')?.classList.toggle('d-none', false);
+      _goTo(2);
+    }
+  });
+
+  // Team fast-track → back
+  _el('btn-team-back')?.addEventListener('click', () => _goTo(1));
+
+  // Team fast-track → Google
+  _el('btn-google-enterprise')?.addEventListener('click', async () => {
+    const btn = _el('btn-google-enterprise');
+    try {
+      btn.disabled = true;
+      btn.textContent = 'A autenticar…';
+
+      const googleUser = await _openGooglePopup();
+      _googleData = googleUser;
+
+      const nameEl  = _el('team-admin-name');
+      const emailEl = _el('team-admin-email');
+      if (nameEl  && !nameEl.value)  nameEl.value  = googleUser.name  ?? '';
+      if (emailEl && !emailEl.value) emailEl.value = googleUser.email ?? '';
+
+      _el('team-pw-section')?.classList.add('d-none');
+      _el('google-enterprise-name').textContent = googleUser.name ?? googleUser.email;
+      _el('google-enterprise-badge')?.classList.remove('d-none');
+      btn.classList.add('d-none');
+      _hideError();
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" style="margin-right:8px;flex-shrink:0"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>Registar com Google';
+      if (err.message === 'popup_blocked') {
+        _showError('Popup bloqueado. Permita popups para este site e tente novamente.');
+      } else if (err.message !== 'cancelled') {
+        _showError('Erro ao autenticar com Google. Tente novamente.');
+      }
+    }
+  });
+
+  // Team fast-track → submit
+  _el('btn-register-team')?.addEventListener('click', async () => {
+    await _submitTeam();
   });
 
   // Step 2 → 1

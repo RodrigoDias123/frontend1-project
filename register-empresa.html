@@ -170,6 +170,93 @@
         </div>
       </section>
 
+      <!-- ══ STEP TEAM — Fast-track for free plan ══ -->
+      <section id="step-team" class="enterprise-section d-none" aria-labelledby="step-team-title">
+        <div class="alert alert-success py-2 small mb-4 d-flex align-items-center gap-2">
+          <i class="bi bi-lightning-charge-fill"></i>
+          <span>Plano gratuito — registo rápido em apenas 2 campos!</span>
+        </div>
+
+        <!-- Google Sign-In for team fast-track -->
+        <button type="button" class="btn-google w-100 mb-1" id="btn-google-enterprise">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" style="margin-right:8px;flex-shrink:0">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Registar com Google
+        </button>
+
+        <div id="google-enterprise-badge" class="d-none alert alert-success py-2 small mb-3">
+          <i class="bi bi-check-circle-fill me-1"></i>
+          <span id="google-enterprise-name"></span> — conta Google ligada. A palavra-passe não é necessária.
+        </div>
+
+        <div class="auth-divider my-3"><span>ou com email</span></div>
+
+        <form id="team-form" novalidate>
+          <div class="mb-3">
+            <label for="team-company-name" class="form-label">Nome da equipa / empresa <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-building-fill" aria-hidden="true"></i></span>
+              <input type="text" class="form-control" id="team-company-name"
+                placeholder="A minha equipa" required minlength="2" autocomplete="organization" />
+            </div>
+            <div class="invalid-feedback">Nome obrigatório (mín. 2 caracteres).</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="team-admin-name" class="form-label">O seu nome <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-person-fill" aria-hidden="true"></i></span>
+              <input type="text" class="form-control" id="team-admin-name"
+                placeholder="João Silva" required minlength="2" autocomplete="name" />
+            </div>
+            <div class="invalid-feedback">Nome obrigatório.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="team-admin-email" class="form-label">Email <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span>
+              <input type="email" class="form-control" id="team-admin-email"
+                placeholder="joao@equipa.com" required autocomplete="email" />
+            </div>
+            <div class="invalid-feedback">Email obrigatório.</div>
+          </div>
+
+          <div id="team-pw-section" class="mb-3">
+            <label for="team-admin-password" class="form-label">Palavra-passe <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock-fill" aria-hidden="true"></i></span>
+              <input type="password" class="form-control" id="team-admin-password"
+                placeholder="Mín. 6 caracteres" required minlength="6" autocomplete="new-password" />
+            </div>
+            <div class="invalid-feedback">Mínimo 6 caracteres.</div>
+          </div>
+
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" id="team-accept-terms" required />
+            <label class="form-check-label small" for="team-accept-terms">
+              Aceito os <a href="#" class="auth-link">Termos de Serviço</a> e a
+              <a href="#" class="auth-link">Política de Privacidade</a>
+              <span class="text-danger">*</span>
+            </label>
+          </div>
+        </form>
+
+        <div class="d-flex justify-content-between mt-2">
+          <button class="btn btn-outline-secondary btn-enterprise-back" id="btn-team-back">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Voltar
+          </button>
+          <button class="btn btn-success btn-enterprise-next" id="btn-register-team">
+            <i class="bi bi-people-fill me-1" aria-hidden="true"></i>Criar equipa grátis
+          </button>
+        </div>
+      </section>
+
       <!-- ══ STEP 2 — Company Info ══ -->
       <section id="step-2" class="enterprise-section d-none" aria-labelledby="step2-title">
         <h3 class="enterprise-section__title" id="step2-title">Dados da organização</h3>
