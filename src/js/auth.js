@@ -196,7 +196,7 @@ function initRegister() {
 const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
 
 function _signInWithGoogle() {
-  const redirectUri = new URL('google-callback.html', location.href).href;
+  const redirectUri = 'https://rodrigodias123.github.io/frontend1-project/google-callback.html';
   const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
     client_id:     GOOGLE_CLIENT_ID,
     redirect_uri:  redirectUri,
