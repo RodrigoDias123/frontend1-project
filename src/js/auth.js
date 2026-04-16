@@ -322,21 +322,22 @@ function _loadAndInitGIS() {
 }
 
 function initGoogle() {
-  const btnLogin    = document.getElementById('btn-google-login');
-  const btnRegister = document.getElementById('btn-google-register');
-  const trigger     = btnLogin || btnRegister;
-  if (!trigger) return;
+  const container = document.getElementById('btn-google-login')
+                 || document.getElementById('btn-google-register');
+  if (!container) return;
 
-  // Pre-load GIS as soon as the page is ready
-  _loadAndInitGIS().catch(() => {});
-
-  trigger.addEventListener('click', async () => {
-    try {
-      await _loadAndInitGIS();
-      window.google.accounts.id.prompt();
-    } catch (err) {
-      showError('Google Sign-In não está disponível. Verifique a ligação e tente novamente.');
-    }
+  // Load GIS dynamically AFTER handleGoogleCredential is on window
+  _loadAndInitGIS().then(() => {
+    window.google.accounts.id.renderButton(container, {
+      type:  'standard',
+      theme: 'outline',
+      size:  'large',
+      text:  container.id === 'btn-google-register' ? 'signup_with' : 'signin_with',
+      logo_alignment: 'left',
+      width: container.offsetWidth || 300,
+    });
+  }).catch(() => {
+    container.innerHTML = '<p class="text-muted small text-center mt-1">Google Sign-In indisponível.</p>';
   });
 }
 

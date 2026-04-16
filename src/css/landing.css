@@ -1016,3 +1016,9 @@ body {
 .btn-google:active {
   background: #f1f3f4;
 }
+
+.g-signin-container {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
