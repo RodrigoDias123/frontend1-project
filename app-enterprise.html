@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="pt" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0d1117" />
+  <title>Dev Tasks — Enterprise</title>
+
+  <!-- Auth guard: must be enterprise user -->
+  <script>
+    (function () {
+      var s = null;
+      try { s = JSON.parse(localStorage.getItem('devtasks_user') || 'null'); } catch {}
+      if (!s) { location.replace('login.html'); }
+      else if (!s.organizationId) { location.replace('app.html'); }
+    })();
+  </script>
+
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="src/css/enterprise-app.css" />
+  <link rel="stylesheet" href="src/css/features.css" />
+
+  <!-- highlight.js (syntax highlighting inside markdown) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" />
+</head>
+
+<body class="ent-app">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SIDEBAR
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <aside class="ent-sidebar" aria-label="Navegação lateral">
+
+    <!-- Org name -->
+    <div class="ent-sidebar-header">
+      <div class="ent-org-name">
+        <i class="bi bi-kanban-fill" style="color:#3b82f6"></i>
+        <span id="ent-org-name">Organização</span>
+        <i class="bi bi-chevron-down" style="font-size:.7rem;color:#999;margin-left:auto"></i>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="ent-nav" aria-label="Filtros principais">
+      <ul>
+        <li>
+          <button class="ent-nav-item ent-nav-item--active" data-filter="all">
+            <i class="bi bi-list-task" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Todas as Tarefas</span>
+            <span class="ent-nav-item-count" id="count-all"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="mine">
+            <i class="bi bi-person-fill" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">As Minhas Tarefas</span>
+            <span class="ent-nav-item-count" id="count-mine"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="inbox">
+            <i class="bi bi-inbox-fill" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Inbox</span>
+            <span class="ent-nav-item-count" id="count-inbox"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="onhold">
+            <i class="bi bi-pause-circle-fill" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Em Espera</span>
+            <span class="ent-nav-item-count" id="count-onhold"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="done">
+            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Concluídas</span>
+            <span class="ent-nav-item-count" id="count-done-nav"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="sent">
+            <i class="bi bi-send-fill" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Enviadas</span>
+            <span class="ent-nav-item-count" id="count-sent"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="trash">
+            <i class="bi bi-trash3" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Lixo</span>
+            <span class="ent-nav-item-count" id="count-trash"></span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Filters section -->
+    <div class="ent-sidebar-section">
+      <div class="ent-sidebar-section-header">
+        Filtros
+        <button aria-label="Adicionar filtro"><i class="bi bi-plus"></i></button>
+      </div>
+      <ul>
+        <li>
+          <button class="ent-nav-item" data-filter="thisweek">
+            <i class="bi bi-calendar-week" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Esta semana</span>
+            <span class="ent-nav-item-count" id="count-thisweek"></span>
+          </button>
+        </li>
+        <li>
+          <button class="ent-nav-item" data-filter="overdue">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#ef4444" aria-hidden="true"></i>
+            <span class="ent-nav-item-text">Em atraso</span>
+            <span class="ent-nav-item-count" id="count-overdue"></span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Labels section -->
+    <div class="ent-sidebar-section">
+      <div class="ent-sidebar-section-header">
+        Labels
+        <button aria-label="Adicionar label"><i class="bi bi-plus"></i></button>
+      </div>
+      <ul class="ent-label-list" id="ent-labels-list">
+        <li class="ent-label-empty">Nenhum label ainda.</li>
+      </ul>
+    </div>
+
+    <!-- Projects section -->
+    <div class="ent-sidebar-section">
+      <div class="ent-sidebar-section-header">
+        Projectos
+        <button id="btn-new-project" aria-label="Novo projecto" title="Novo projecto"><i class="bi bi-plus"></i></button>
+      </div>
+      <ul class="ent-project-list" id="ent-projects-list">
+        <li class="ent-label-empty">Nenhum projecto ainda.</li>
+      </ul>
+    </div>
+
+    <!-- Footer: user + logout -->
+    <div class="ent-sidebar-footer">
+      <div class="ent-sidebar-footer-user">
+        <div class="ent-avatar ent-avatar--sm" id="ent-sidebar-avatar" aria-hidden="true"></div>
+        <div>
+          <div class="ent-sidebar-footer-name" id="ent-sidebar-name"></div>
+          <div class="ent-sidebar-footer-role" id="ent-sidebar-role"></div>
+        </div>
+      </div>
+      <button class="ent-icon-btn" id="btn-ent-logout" title="Terminar sessão" aria-label="Terminar sessão">
+        <i class="bi bi-box-arrow-right" style="color:#bbb"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MAIN AREA
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="ent-main">
+
+    <!-- Top bar -->
+    <header class="ent-topbar" role="banner">
+      <div class="ent-topbar-left">
+        <button class="btn-ent-new" id="btn-ent-new" aria-label="Nova tarefa">
+          <i class="bi bi-list me-1" aria-hidden="true"></i>Nova
+        </button>
+        <button class="btn-ent-new-plus" id="btn-ent-new-quick" aria-label="Criar rápido">
+          <i class="bi bi-plus" aria-hidden="true"></i>
+        </button>
+        <nav class="ent-view-tabs" aria-label="Modos de visualização">
+          <button class="ent-view-tab" data-view="feed">Atividade</button>
+          <button class="ent-view-tab ent-view-tab--active" data-view="calendar">Calendário</button>
+          <button class="ent-view-tab" id="btn-view-analytics" data-view="analytics">Análise</button>
+        </nav>
+        <!-- Projects dropdown -->
+        <div class="dropdown ent-topbar-projects-dropdown">
+          <button class="ent-topbar-project-btn" type="button" data-bs-toggle="dropdown" aria-label="Projectos" title="Projectos">
+            <i class="bi bi-folder-fill" aria-hidden="true"></i>
+            <span id="ent-topbar-project-label">Projectos</span>
+            <i class="bi bi-chevron-down" style="font-size:.6rem;opacity:.6" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu" id="ent-topbar-project-menu">
+            <li><h6 class="dropdown-header small">Projectos</h6></li>
+            <li>
+              <button class="dropdown-item small" data-project-filter="all">
+                <i class="bi bi-grid-fill me-2 text-secondary" aria-hidden="true"></i>Todos
+              </button>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+          </ul>
+        </div>
+        <!-- Back from analytics -->
+        <button class="ent-back-btn d-none" id="btn-back-from-analytics" aria-label="Voltar" title="Voltar">
+          <i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar
+        </button>
+      </div>
+      <div class="ent-topbar-right">
+        <div class="ent-search-wrap" role="search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input type="search" id="ent-search" placeholder="Pesquisar…" aria-label="Pesquisar" />
+        </div>
+        <button class="ent-icon-btn" title="Gerir utilizadores" id="btn-ent-org-users"
+          data-bs-toggle="modal" data-bs-target="#orgUsersModal" aria-label="Gerir utilizadores">
+          <i class="bi bi-people-fill"></i>
+        </button>
+        <button class="ent-icon-btn" id="btn-toggle-stats" title="Estatísticas (S)" aria-label="Estatísticas">
+          <i class="bi bi-bar-chart-fill"></i>
+        </button>
+        <!-- More actions dropdown -->
+        <div class="dropdown">
+          <button class="ent-icon-btn" type="button" data-bs-toggle="dropdown" aria-label="Mais ações" title="Mais ações">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><h6 class="dropdown-header small">Exportar</h6></li>
+            <li>
+              <button class="dropdown-item small" id="btn-export-json">
+                <i class="bi bi-filetype-json me-2 text-warning" aria-hidden="true"></i>Exportar JSON
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-export-csv">
+                <i class="bi bi-filetype-csv me-2 text-success" aria-hidden="true"></i>Exportar CSV
+              </button>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li><h6 class="dropdown-header small">Ferramentas</h6></li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-dag">
+                <i class="bi bi-diagram-3 me-2 text-info" aria-hidden="true"></i>Dependências (D)
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-automations">
+                <i class="bi bi-gear-wide-connected me-2 text-secondary" aria-hidden="true"></i>Automações (A)
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-pomodoro">
+                <i class="bi bi-stopwatch me-2 text-danger" aria-hidden="true"></i>Pomodoro (P)
+              </button>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li><h6 class="dropdown-header small">Dev Tools</h6></li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-git-tools">
+                <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools (G)
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-deep-work">
+                <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco (F)
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-postmortem">
+                <i class="bi bi-file-earmark-text me-2 text-success" aria-hidden="true"></i>Post-mortem
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small" id="btn-show-tech-debt">
+                <i class="bi bi-bug-fill me-2 text-danger" aria-hidden="true"></i>Débito Técnico
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small d-none" id="btn-view-snapshot">
+                <i class="bi bi-arrow-counterclockwise me-2 text-warning" aria-hidden="true"></i>Retomar contexto
+                <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">!</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="dropdown">
+          <button class="ent-icon-btn position-relative" id="btn-ent-notifications" title="Notificações" aria-label="Notificações" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+            <i class="bi bi-bell"></i>
+            <span class="ent-notif-badge d-none" id="ent-notif-badge"></span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end ent-notif-panel" id="ent-notif-panel" style="width:340px;max-height:420px;overflow:hidden;display:flex;flex-direction:column">
+            <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom" style="border-color:#21262d!important">
+              <span class="fw-semibold small">Notificações</span>
+              <button class="btn btn-sm btn-link text-muted p-0" id="btn-clear-notifications" style="font-size:.75rem;text-decoration:none">Limpar tudo</button>
+            </div>
+            <div id="ent-notif-list" style="overflow-y:auto;flex:1"></div>
+          </div>
+        </div>
+        <div class="dropdown">
+          <div class="ent-avatar" id="ent-topbar-avatar" title="O meu perfil"
+            style="cursor:pointer" data-bs-toggle="dropdown" aria-expanded="false" role="button"></div>
+          <ul class="dropdown-menu dropdown-menu-end" id="ent-user-menu">
+            <li class="px-3 py-2">
+              <div class="d-flex align-items-center gap-2">
+                <div class="ent-avatar ent-avatar--sm" id="ent-user-menu-avatar"></div>
+                <div>
+                  <div class="fw-semibold small" id="ent-user-menu-name"></div>
+                  <div class="text-muted" style="font-size:.7rem" id="ent-user-menu-email"></div>
+                </div>
+              </div>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <span class="dropdown-item-text small text-muted" id="ent-user-menu-role"></span>
+            </li>
+            <li>
+              <span class="dropdown-item-text small text-muted" id="ent-user-menu-org"></span>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <button class="dropdown-item small" id="btn-user-menu-profile">
+                <i class="bi bi-pencil-square me-2"></i>Editar perfil
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item small text-danger" id="btn-user-menu-logout">
+                <i class="bi bi-box-arrow-right me-2"></i>Terminar sessão
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         STATS PANEL (Analytics view)
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <section id="stats-panel" class="stats-panel" aria-label="Painel de estatísticas" hidden>
+      <div class="container-fluid px-4 py-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-lg-5">
+            <div class="row g-2">
+              <div class="col-4">
+                <div class="stat-card stat-card--todo" role="status" aria-label="Total de tarefas a fazer">
+                  <span class="stat-card__count" id="count-todo">0</span>
+                  <span class="stat-card__label">To Do</span>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="stat-card stat-card--doing" role="status" aria-label="Total de tarefas em progresso">
+                  <span class="stat-card__count" id="count-doing">0</span>
+                  <span class="stat-card__label">Doing</span>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="stat-card stat-card--done" role="status" aria-label="Total de tarefas concluídas">
+                  <span class="stat-card__count" id="count-done">0</span>
+                  <span class="stat-card__label">Done</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="chart-wrapper">
+              <canvas id="stats-chart" aria-label="Gráfico de estatísticas das tarefas" role="img"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Content: feed + detail -->
+    <div class="ent-content">
+
+      <!-- ── CALENDAR VIEW ── -->
+      <section class="ent-calendar-view d-none" id="ent-calendar-view" aria-label="Vista de calendário">
+        <div class="ent-cal-header">
+          <button class="ent-icon-btn" id="btn-cal-prev" aria-label="Mês anterior">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <h3 class="ent-cal-month" id="ent-cal-month"></h3>
+          <button class="ent-icon-btn" id="btn-cal-next" aria-label="Próximo mês">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary ms-3" id="btn-cal-today">Hoje</button>
+        </div>
+        <div class="ent-cal-grid">
+          <div class="ent-cal-weekdays">
+            <span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span>
+          </div>
+          <div class="ent-cal-days" id="ent-cal-days"></div>
+        </div>
+      </section>
+
+      <!-- ── FEED PANEL ── -->
+      <section class="ent-feed" aria-label="Feed de atividade">
+        <div class="ent-feed-header">
+          <span class="ent-feed-title" id="ent-feed-title">Notificações</span>
+          <div class="d-flex gap-1">
+            <button class="ent-icon-btn" id="btn-feed-clear-notif" aria-label="Limpar notificações" title="Limpar notificações">
+              <i class="bi bi-bell-slash" aria-hidden="true"></i>
+            </button>
+            <button class="ent-icon-btn" aria-label="Filtrar">
+              <i class="bi bi-sliders" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick create panel (hidden by default) -->
+        <div class="ent-new-task-panel d-none" id="ent-new-task-panel">
+          <form id="ent-new-task-form" novalidate>
+            <input type="text" id="ent-new-title" placeholder="Título da tarefa *" required autocomplete="off" />
+            <textarea id="ent-new-desc" placeholder="Descrição (opcional)" rows="2"></textarea>
+            <div class="d-flex gap-2">
+              <select id="ent-new-priority" style="flex:1">
+                <option value="baixa">Prioridade: Baixa</option>
+                <option value="media" selected>Prioridade: Média</option>
+                <option value="alta">Prioridade: Alta</option>
+              </select>
+              <select id="ent-new-project" style="flex:1">
+                <option value="">Sem projecto</option>
+              </select>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <select id="ent-new-assignee" style="flex:1">
+                <option value="">Atribuir a…</option>
+              </select>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-check me-1"></i>Criar
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                id="btn-cancel-new">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Task list / activity feed -->
+        <div id="ent-feed-list" class="ent-feed-list" role="list" aria-label="Tarefas"></div>
+      </section>
+
+      <!-- ── DETAIL PANEL ── -->
+      <main class="ent-detail" id="ent-detail" aria-label="Detalhes da tarefa">
+
+        <!-- Empty state -->
+        <div id="ent-detail-empty" class="ent-detail-empty">
+          <i class="bi bi-layout-text-sidebar-reverse" aria-hidden="true"></i>
+          <p>Selecione uma tarefa para ver os detalhes</p>
+        </div>
+
+        <!-- Task detail (hidden until task selected) -->
+        <div id="ent-detail-content" class="d-none" style="display:flex!important;flex-direction:column;flex:1;overflow:hidden">
+
+          <!-- Detail topbar -->
+          <div class="ent-detail-topbar">
+            <span class="ent-breadcrumb" id="ent-detail-breadcrumb" aria-label="Localização"></span>
+            <div class="d-flex gap-1">
+              <button class="ent-icon-btn" id="btn-detail-prev" title="Tarefa anterior">
+                <i class="bi bi-chevron-up" aria-hidden="true"></i>
+              </button>
+              <button class="ent-icon-btn" id="btn-detail-next" title="Próxima tarefa">
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+              </button>
+              <button class="ent-icon-btn" title="Mais opções" id="btn-detail-more">
+                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scrollable content -->
+          <div class="ent-detail-scroll">
+
+            <!-- Task ID + Title -->
+            <div class="ent-detail-id-row">
+              <span class="ent-detail-id" id="ent-detail-id"></span>
+              <h2 class="ent-detail-title" id="ent-detail-title" contenteditable="false"></h2>
+            </div>
+
+            <!-- Assignee + CC + Tags -->
+            <div class="ent-detail-assignee-row">
+              <div class="ent-avatar ent-avatar--sm" id="ent-detail-assignee-av" aria-hidden="true"></div>
+              <span class="small fw-semibold" id="ent-detail-assignee-name"></span>
+              <span class="badge bg-secondary small ms-1">Cc</span>
+              <div id="ent-detail-tags" class="d-flex flex-wrap gap-1 ms-2"></div>
+            </div>
+
+            <!-- Status + Change -->
+            <div class="ent-detail-status-row">
+              <div class="ent-status-btn" id="ent-detail-status" aria-live="polite"></div>
+              <select class="form-select form-select-sm ent-status-select"
+                id="ent-status-select" aria-label="Mudar estado da tarefa">
+                <option value="todo">A Fazer</option>
+                <option value="doing">Em Progresso</option>
+                <option value="done">Concluído</option>
+              </select>
+            </div>
+
+            <!-- Time bar -->
+            <div class="ent-time-section">
+              <div class="ent-time-labels">
+                <span id="ent-detail-time-logged" title="Tempo registado">0h</span>
+                <div class="ent-time-bar" role="progressbar" aria-label="Progresso de tempo">
+                  <div class="ent-time-bar-fill" id="ent-time-bar-fill"></div>
+                </div>
+                <span id="ent-detail-time-estimated" title="Tempo estimado">—</span>
+              </div>
+              <div class="ent-time-dates" id="ent-detail-dates"></div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="ent-detail-btn-row">
+              <button class="btn btn-sm btn-outline-secondary" id="btn-ent-add-item">
+                <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Adicionar item
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" id="btn-ent-log-time">
+                <i class="bi bi-stopwatch me-1" aria-hidden="true"></i>Registar tempo
+              </button>
+            </div>
+
+            <!-- Description -->
+            <p class="ent-detail-description" id="ent-detail-description"></p>
+
+            <!-- Tabs -->
+            <div class="ent-tabs" role="tablist">
+              <button class="ent-tab-btn ent-tab-btn--active" data-tab="comment"
+                role="tab" aria-selected="true">Comentário</button>
+              <button class="ent-tab-btn" data-tab="history"
+                role="tab" aria-selected="false">Histórico</button>
+              <button class="ent-tab-btn" data-tab="testcases"
+                role="tab" aria-selected="false">Casos de Teste</button>
+            </div>
+
+            <!-- Tab: Comments -->
+            <div id="ent-tab-comment" role="tabpanel">
+              <div id="ent-comment-list"></div>
+              <form id="ent-comment-form" class="ent-comment-form">
+                <div class="ent-avatar ent-avatar--sm" id="ent-comment-av" aria-hidden="true"></div>
+                <div class="ent-comment-input-wrap">
+                  <textarea id="ent-comment-input" class="ent-comment-textarea"
+                    placeholder="Escreva um comentário…" rows="2" aria-label="Comentário"></textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">Enviar</button>
+              </form>
+            </div>
+
+            <!-- Tab: History -->
+            <div id="ent-tab-history" class="d-none" role="tabpanel">
+              <div id="ent-history-list"></div>
+            </div>
+
+            <!-- Tab: Test Cases -->
+            <div id="ent-tab-testcases" class="d-none" role="tabpanel">
+              <div id="ent-testcases-list"></div>
+            </div>
+
+          </div><!-- /ent-detail-scroll -->
+        </div><!-- /ent-detail-content -->
+      </main>
+
+    </div><!-- /ent-content -->
+  </div><!-- /ent-main -->
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       COMMAND PALETTE
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="cmd-palette" class="cmd-palette-overlay" hidden
+       role="dialog" aria-modal="true" aria-label="Paleta de comandos">
+    <div class="cmd-palette-box">
+      <div class="cmd-palette-search">
+        <i class="bi bi-search cmd-search-icon" aria-hidden="true"></i>
+        <input id="cmd-input" type="text" placeholder="Pesquisar comandos..."
+          autocomplete="off" spellcheck="false" aria-label="Pesquisar comandos" />
+        <kbd class="cmd-esc">Esc</kbd>
+      </div>
+      <ul id="cmd-list" class="cmd-list" role="listbox" aria-label="Resultados"></ul>
+      <div class="cmd-palette-footer">
+        <span><kbd>↑↓</kbd> navegar</span>
+        <span><kbd>Enter</kbd> executar</span>
+        <span><kbd>Esc</kbd> fechar</span>
+        <span><kbd>Ctrl+K</kbd> paleta</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       POMODORO WIDGET
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="pomo-widget" class="pomo-widget" hidden aria-label="Timer Pomodoro" role="complementary">
+    <div class="pomo-header">
+      <span id="pomo-label" class="pomo-mode">Foco</span>
+      <button id="pomo-close" class="pomo-btn-close" aria-label="Fechar Pomodoro" title="Fechar">
+        <i class="bi bi-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="pomo-body">
+      <div class="pomo-ring-wrap">
+        <svg viewBox="0 0 80 80" class="pomo-ring-svg" aria-hidden="true">
+          <circle cx="40" cy="40" r="36" class="pomo-ring-bg" />
+          <circle cx="40" cy="40" r="36" id="pomo-ring" class="pomo-ring-progress" />
+        </svg>
+        <span id="pomo-time" class="pomo-time">25:00</span>
+      </div>
+      <p id="pomo-task-name" class="pomo-task-name text-muted"></p>
+    </div>
+    <div class="pomo-controls">
+      <button id="pomo-play" class="pomo-btn" aria-label="Iniciar" title="Iniciar">
+        <i class="bi bi-play-fill" aria-hidden="true"></i>
+      </button>
+      <button id="pomo-reset" class="pomo-btn" aria-label="Reiniciar" title="Reiniciar">
+        <i class="bi bi-skip-backward-fill" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       AUTOMATIONS MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="automationsModal" tabindex="-1" aria-labelledby="automationsModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="automationsModalLabel">
+            <i class="bi bi-gear-wide-connected me-2" aria-hidden="true"></i>Automações
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">
+            Define regras <em>Se [evento] → então [ação]</em> para automatizar o teu workflow.
+          </p>
+          <div class="border border-secondary-subtle rounded p-3 mb-3">
+            <h6 class="mb-3 small fw-semibold"><i class="bi bi-plus-circle me-1"></i>Nova Regra</h6>
+            <div class="rule-form-grid">
+              <div>
+                <label class="form-label small">Nome da regra</label>
+                <input type="text" class="form-control form-control-sm" id="rule-name"
+                  placeholder="Ex: Notificar quando tarefa é concluída" />
+              </div>
+              <div class="row g-2">
+                <div class="col-4">
+                  <label class="form-label small">Evento</label>
+                  <select class="form-select form-select-sm" id="rule-trigger">
+                    <option value="status_changed">Status alterado</option>
+                    <option value="task_created">Tarefa criada</option>
+                    <option value="task_overdue">Tarefa vencida</option>
+                  </select>
+                </div>
+                <div class="col-3">
+                  <label class="form-label small">Campo</label>
+                  <select class="form-select form-select-sm" id="rule-cond-field">
+                    <option value="">Nenhum</option>
+                    <option value="newStatus">Novo estado</option>
+                    <option value="priority">Prioridade</option>
+                    <option value="status">Estado atual</option>
+                  </select>
+                </div>
+                <div class="col-2">
+                  <label class="form-label small">Op</label>
+                  <select class="form-select form-select-sm" id="rule-cond-op">
+                    <option value="eq">é</option>
+                    <option value="neq">não é</option>
+                  </select>
+                </div>
+                <div class="col-3">
+                  <label class="form-label small">Valor</label>
+                  <input type="text" class="form-control form-control-sm" id="rule-cond-val"
+                    placeholder="ex: done" />
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-4">
+                  <label class="form-label small">Ação</label>
+                  <select class="form-select form-select-sm" id="rule-action-type">
+                    <option value="show_toast">Mostrar notificação</option>
+                    <option value="move_to">Mover para estado</option>
+                    <option value="add_label">Adicionar label</option>
+                  </select>
+                </div>
+                <div class="col-8">
+                  <label class="form-label small">Parâmetro (valor da ação)</label>
+                  <input type="text" class="form-control form-control-sm" id="rule-action-param"
+                    placeholder="ex: done / deploy-ready / 🚀 deploy pronto" />
+                </div>
+              </div>
+              <div>
+                <button type="button" class="btn btn-sm btn-primary" id="btn-add-rule">
+                  <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Adicionar Regra
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="rules-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DAG / DEPENDENCIES MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="dagModal" tabindex="-1" aria-labelledby="dagModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="dagModalLabel">
+            <i class="bi bi-diagram-3 me-2" aria-hidden="true"></i>Grafo de Dependências
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="dag-content">
+            <p class="text-muted small text-center py-3">Nenhuma dependência definida.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       GIT TOOLS MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="gitToolsModal" tabindex="-1" aria-labelledby="gitToolsModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="gitToolsModalLabel">
+            <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="git-task-select" class="form-label small fw-semibold">Tarefa</label>
+            <select class="form-select form-select-sm" id="git-task-select">
+              <option value="">— Selecionar tarefa —</option>
+            </select>
+          </div>
+          <ul class="nav nav-tabs mb-3 small" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-branch-pane" type="button" role="tab">
+                <i class="bi bi-diagram-2 me-1"></i>Branch
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-pr-pane" type="button" role="tab">
+                <i class="bi bi-file-diff me-1"></i>Pull Request
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-commit-pane" type="button" role="tab">
+                <i class="bi bi-arrow-up-square me-1"></i>Commit
+              </button>
+            </li>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="gt-branch-pane" role="tabpanel">
+              <p class="text-muted small">Nome de branch sugerido com base na tarefa selecionada.</p>
+              <div class="input-group mb-2">
+                <span class="input-group-text font-monospace text-muted small" style="font-size:.75rem">git checkout -b</span>
+                <input type="text" class="form-control font-monospace" id="git-branch-output" readonly placeholder="Seleciona uma tarefa acima…" />
+                <button class="btn btn-outline-secondary btn-sm" id="btn-copy-branch" type="button" title="Copiar">
+                  <i class="bi bi-clipboard" aria-hidden="true"></i>
+                </button>
+              </div>
+              <small id="git-branch-feedback" class="text-success d-none">✓ Copiado!</small>
+            </div>
+            <div class="tab-pane fade" id="gt-pr-pane" role="tabpanel">
+              <p class="text-muted small">Template de Pull Request gerado a partir da descrição da tarefa.</p>
+              <textarea class="form-control font-monospace" id="git-pr-output" rows="14"
+                placeholder="Seleciona uma tarefa acima…" style="font-size:.78rem; resize: vertical;"></textarea>
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button class="btn btn-primary btn-sm" id="btn-copy-pr" type="button">
+                  <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copiar PR
+                </button>
+                <small id="git-pr-feedback" class="text-success d-none">✓ Copiado!</small>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="gt-commit-pane" role="tabpanel">
+              <p class="text-muted small">Cola uma mensagem de commit para detetar a tarefa relacionada e sugerir uma atualização de estado.</p>
+              <div class="mb-3">
+                <label for="git-commit-input" class="form-label small">Mensagem de commit</label>
+                <input type="text" class="form-control font-monospace" id="git-commit-input"
+                  placeholder="fix: closes #42 corrigido bug de login" />
+                <div class="form-text">Suporta os formatos: <code>fix: #id</code>, <code>closes #id</code>, <code>feat: #id</code></div>
+              </div>
+              <button class="btn btn-outline-primary btn-sm mb-3" id="btn-parse-commit" type="button">
+                <i class="bi bi-search me-1" aria-hidden="true"></i>Analisar commit
+              </button>
+              <div id="git-commit-result" class="small"></div>
+              <button class="btn btn-success btn-sm mt-2" id="btn-apply-commit-status" type="button" hidden>
+                <i class="bi bi-check2 me-1" aria-hidden="true"></i>Aplicar estado
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DEEP WORK — SELECTOR MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="deepWorkModal" tabindex="-1" aria-labelledby="deepWorkModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="deepWorkModalLabel">
+            <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">Seleciona a tarefa em que vais focar. O ambiente entra em modo imersivo.</p>
+          <select class="form-select form-select-sm" id="dw-task-select">
+            <option value="">— Selecionar tarefa —</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-info btn-sm text-dark" id="btn-deep-work-enter">
+            <i class="bi bi-lightning-fill me-1" aria-hidden="true"></i>Entrar em foco
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DEEP WORK — FULLSCREEN OVERLAY
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="deep-work-overlay" class="deep-work-overlay" hidden aria-modal="true" role="dialog" aria-label="Modo Foco">
+    <div class="deep-work-content">
+      <div class="deep-work-header">
+        <span class="badge bg-info text-dark">
+          <i class="bi bi-lightning-fill me-1"></i>Modo Foco Ativo
+        </span>
+        <button id="btn-deep-work-exit" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Sair
+        </button>
+      </div>
+      <div class="deep-work-task">
+        <div class="text-muted small mb-1">A trabalhar em</div>
+        <h2 id="dw-task-title" class="deep-work-title"></h2>
+        <p id="dw-task-desc" class="deep-work-desc text-muted"></p>
+      </div>
+      <div class="deep-work-timer">
+        <div class="dw-timer-label text-muted small">Tempo de foco</div>
+        <div id="dw-elapsed" class="dw-timer-value">00:00</div>
+      </div>
+      <div class="deep-work-snapshot">
+        <label for="dw-snapshot-notes" class="form-label small text-muted">
+          Notas de contexto <small>(o que estás a fazer, onde estás)</small>
+        </label>
+        <textarea id="dw-snapshot-notes" class="form-control form-control-sm" rows="3"
+          placeholder="Ex: A debugar o erro de cors no endpoint /auth. Linha 42 do auth.js. Testei com token inválido…"></textarea>
+        <div class="d-flex gap-2 mt-2 align-items-center">
+          <button id="btn-capture-snapshot" class="btn btn-warning btn-sm text-dark">
+            <i class="bi bi-camera-fill me-1" aria-hidden="true"></i>Capturar Snapshot
+          </button>
+          <small id="dw-snapshot-feedback" class="text-success d-none"></small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SNAPSHOT / CONTEXT RESTORE MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="snapshotModal" tabindex="-1" aria-labelledby="snapshotModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="snapshotModalLabel">
+            <i class="bi bi-arrow-counterclockwise me-2 text-warning" aria-hidden="true"></i>Retomar Contexto
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Aqui está o contexto que guardaste antes de seres interrompido.</p>
+          <div id="snapshot-content"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       POST-MORTEM MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="postMortemModal" tabindex="-1" aria-labelledby="postMortemModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="postMortemModalLabel">
+            <i class="bi bi-file-earmark-text me-2 text-success" aria-hidden="true"></i>Post-mortem / Documentação
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Gera automaticamente um resumo técnico de uma tarefa concluída para a tua wiki ou documentação.
+          </p>
+          <div class="mb-3">
+            <label for="pm-task-select" class="form-label small fw-semibold">Tarefa concluída</label>
+            <select class="form-select form-select-sm" id="pm-task-select">
+              <option value="">— Selecionar tarefa —</option>
+            </select>
+          </div>
+          <div>
+            <label for="pm-output" class="form-label small fw-semibold">Post-mortem gerado (Markdown)</label>
+            <textarea class="form-control font-monospace" id="pm-output" rows="18"
+              placeholder="Seleciona uma tarefa concluída acima para gerar o post-mortem…"
+              style="font-size:.78rem; resize: vertical;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-copy-postmortem">
+            <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copiar Markdown
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       TECH DEBT MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="techDebtModal" tabindex="-1" aria-labelledby="techDebtModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="techDebtModalLabel">
+            <i class="bi bi-bug-fill me-2 text-danger" aria-hidden="true"></i>Débito Técnico
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="border border-secondary-subtle rounded p-3 mb-3">
+            <h6 class="small fw-semibold mb-3"><i class="bi bi-plus-circle me-1"></i>Registar débito técnico</h6>
+            <div id="debt-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
+            <div class="row g-2 mb-2">
+              <div class="col-8">
+                <label for="debt-title" class="form-label small">Título</label>
+                <input type="text" class="form-control form-control-sm" id="debt-title"
+                  placeholder="Ex: Remover dependência legada do lodash" />
+              </div>
+              <div class="col-4">
+                <label for="debt-type" class="form-label small">Tipo</label>
+                <select class="form-select form-select-sm" id="debt-type">
+                  <option value="refactoring">Refactoring</option>
+                  <option value="TODO">TODO</option>
+                  <option value="FIXME">FIXME</option>
+                  <option value="upgrade">Upgrade de lib</option>
+                  <option value="tests">Testes em falta</option>
+                  <option value="docs">Documentação</option>
+                </select>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-add-debt">
+              <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Adicionar
+            </button>
+          </div>
+          <div id="debt-list">
+            <p class="text-muted small text-center py-3">Nenhum débito registado.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    <div id="app-toast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toast-message">Operação concluída.</div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar notificação"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PROJECT MODAL — Create / Edit project + assign members
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="projectModal" tabindex="-1" aria-labelledby="projectModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="projectModalLabel">
+            <i class="bi bi-folder-fill me-2 text-primary" aria-hidden="true"></i><span id="project-modal-title">Novo Projecto</span>
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="project-form-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
+          <div id="project-form-success" class="alert alert-success small py-2 d-none" role="status"></div>
+          <form id="project-form" novalidate>
+            <input type="hidden" id="project-edit-id" value="" />
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-8">
+                <label for="project-name" class="form-label small fw-semibold">Nome do projecto <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="project-name" placeholder="Ex: Website Redesign" required autocomplete="off" />
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="project-color" class="form-label small fw-semibold">Cor</label>
+                <div class="d-flex gap-2 flex-wrap mt-1" id="project-color-picker">
+                  <button type="button" class="ent-color-dot ent-color-dot--active" data-color="#3b82f6" style="background:#3b82f6" title="Azul"></button>
+                  <button type="button" class="ent-color-dot" data-color="#8b5cf6" style="background:#8b5cf6" title="Roxo"></button>
+                  <button type="button" class="ent-color-dot" data-color="#22c55e" style="background:#22c55e" title="Verde"></button>
+                  <button type="button" class="ent-color-dot" data-color="#f59e0b" style="background:#f59e0b" title="Amarelo"></button>
+                  <button type="button" class="ent-color-dot" data-color="#ef4444" style="background:#ef4444" title="Vermelho"></button>
+                  <button type="button" class="ent-color-dot" data-color="#0ea5e9" style="background:#0ea5e9" title="Cyan"></button>
+                  <button type="button" class="ent-color-dot" data-color="#f97316" style="background:#f97316" title="Laranja"></button>
+                  <button type="button" class="ent-color-dot" data-color="#ec4899" style="background:#ec4899" title="Rosa"></button>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="project-desc" class="form-label small fw-semibold">Descrição</label>
+              <textarea class="form-control" id="project-desc" rows="2" placeholder="Descrição do projecto (opcional)"></textarea>
+            </div>
+            <hr class="my-3" />
+            <h6 class="fw-semibold mb-2"><i class="bi bi-people-fill me-2 text-info"></i>Membros do Projecto</h6>
+            <p class="text-muted small mb-2">Selecione os utilizadores da organização que farão parte deste projecto.</p>
+            <div id="project-members-list" class="mb-3"></div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+              <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btn-delete-project">
+                <i class="bi bi-trash me-1"></i>Eliminar
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm" id="btn-save-project">
+                <i class="bi bi-check-lg me-1"></i>Guardar Projecto
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       ORG USERS MODAL (reused from app.html)
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="orgUsersModal" tabindex="-1" aria-labelledby="orgUsersModalLabel" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="orgUsersModalLabel">
+            <i class="bi bi-people-fill me-2 text-info"></i>Gerir Utilizadores
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="org-users-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
+          <div id="org-form-success" class="alert alert-success small py-2 d-none" role="status"></div>
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0 fw-semibold">Membros <span class="badge bg-secondary ms-1" id="org-user-count">—</span></h6>
+          </div>
+          <div id="org-user-list" class="org-user-list mb-4">
+            <p class="text-muted small text-center py-3">A carregar…</p>
+          </div>
+          <hr class="my-3" />
+          <h6 class="fw-semibold mb-3"><i class="bi bi-person-plus-fill me-2 text-success"></i>Adicionar novo membro</h6>
+          <div id="org-form-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
+          <form id="org-create-user-form" novalidate>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label for="org-new-name" class="form-label">Nome completo <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                  <input type="text" class="form-control" id="org-new-name" placeholder="João Silva" required autocomplete="off" />
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="org-new-email" class="form-label">Email <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                  <input type="email" class="form-control" id="org-new-email" placeholder="joao@empresa.com" required autocomplete="off" />
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="org-new-password" class="form-label">Palavra-passe <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                  <input type="password" class="form-control" id="org-new-password" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password" />
+                  <button type="button" class="btn btn-outline-secondary" id="org-btn-toggle-pw" tabindex="-1">
+                    <i class="bi bi-eye" id="org-pw-eye"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="org-new-role" class="form-label">Função</label>
+                <select class="form-select" id="org-new-role">
+                  <option value="member" selected>Membro</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+              <button type="submit" class="btn btn-success" id="org-btn-create-user">
+                <i class="bi bi-person-plus-fill me-2"></i>Criar utilizador
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PROFILE MODAL
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div class="modal fade" id="entProfileModal" tabindex="-1" aria-labelledby="entProfileModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h2 class="modal-title fs-5" id="entProfileModalLabel">
+            <i class="bi bi-person-circle me-2"></i>Perfil
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <!-- Avatar + info -->
+          <div class="text-center mb-4">
+            <label class="position-relative d-inline-block mx-auto mb-2" for="ent-profile-avatar-input" style="cursor:pointer" title="Alterar foto de perfil">
+              <div class="ent-avatar" id="ent-profile-avatar-lg" style="width:64px;height:64px;font-size:1.5rem;line-height:64px;overflow:hidden">
+                <img id="ent-profile-avatar-img" class="d-none" alt="Foto" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+              </div>
+              <span class="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width:22px;height:22px">
+                <i class="bi bi-camera-fill text-white" style="font-size:.65rem"></i>
+              </span>
+            </label>
+            <input type="file" id="ent-profile-avatar-input" accept="image/*" class="d-none">
+            <h3 class="fs-5 fw-semibold mb-0" id="ent-profile-name-display">—</h3>
+            <p class="text-muted small mb-0" id="ent-profile-email-display">—</p>
+            <span class="badge bg-secondary mt-1" id="ent-profile-role-badge"></span>
+          </div>
+          <hr class="border-secondary-subtle" />
+          <!-- Stats -->
+          <div class="row g-2 text-center mb-4">
+            <div class="col-4">
+              <div class="p-2 rounded" style="background:#161b22">
+                <div class="fw-bold" id="ent-pstat-total">0</div>
+                <div class="text-muted" style="font-size:.7rem">Tarefas</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-2 rounded" style="background:#161b22">
+                <div class="fw-bold text-success" id="ent-pstat-done">0</div>
+                <div class="text-muted" style="font-size:.7rem">Concluídas</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-2 rounded" style="background:#161b22">
+                <div class="fw-bold text-warning" id="ent-pstat-time">0h</div>
+                <div class="text-muted" style="font-size:.7rem">Tempo total</div>
+              </div>
+            </div>
+          </div>
+          <hr class="border-secondary-subtle" />
+          <!-- Editar nome -->
+          <div class="mb-3">
+            <label for="ent-profile-name-input" class="form-label small fw-semibold">Nome</label>
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control" id="ent-profile-name-input" placeholder="O teu nome" autocomplete="name" />
+              <button class="btn btn-outline-primary" id="btn-ent-save-name" type="button">
+                <i class="bi bi-floppy-fill"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Alterar password -->
+          <details class="mb-3">
+            <summary class="small fw-semibold text-muted" style="cursor:pointer;user-select:none;list-style:none">
+              <i class="bi bi-lock-fill me-1"></i>Alterar palavra-passe
+              <i class="bi bi-chevron-down ms-1" style="font-size:.7rem"></i>
+            </summary>
+            <div class="mt-3">
+              <div class="mb-2">
+                <label for="ent-profile-pw-new" class="form-label small">Nova palavra-passe</label>
+                <input type="password" class="form-control form-control-sm" id="ent-profile-pw-new" autocomplete="new-password" minlength="6" />
+              </div>
+              <div class="mb-3">
+                <label for="ent-profile-pw-confirm" class="form-label small">Confirmar nova</label>
+                <input type="password" class="form-control form-control-sm" id="ent-profile-pw-confirm" autocomplete="new-password" minlength="6" />
+              </div>
+              <button class="btn btn-sm btn-outline-primary w-100" id="btn-ent-save-password" type="button">
+                <i class="bi bi-shield-lock-fill me-1"></i>Guardar palavra-passe
+              </button>
+            </div>
+          </details>
+          <!-- Feedback -->
+          <div id="ent-profile-msg" class="d-none alert py-2 small" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous"></script>
+  <script src="src/js/app-enterprise.js" type="module"></script>
+</body>
+</html>
