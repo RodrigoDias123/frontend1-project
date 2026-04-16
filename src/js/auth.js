@@ -282,24 +282,43 @@ window.handleGoogleCredential = async function(response) {
 
 const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
 
-function _initGIS() {
-  window.google.accounts.id.initialize({
-    client_id:   GOOGLE_CLIENT_ID,
-    callback:    window.handleGoogleCredential,
-    ux_mode:     'popup',
-    auto_select: false,
-  });
-}
+let _gisReady = null; // Promise that resolves when GIS is initialized
 
-function _loadGIS() {
-  return new Promise((resolve) => {
-    if (window.google?.accounts?.id) { resolve(); return; }
+function _loadAndInitGIS() {
+  if (_gisReady) return _gisReady;
+
+  _gisReady = new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id:   GOOGLE_CLIENT_ID,
+        callback:    window.handleGoogleCredential,
+        ux_mode:     'popup',
+        auto_select: false,
+      });
+      resolve();
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
-    script.onload = resolve;
-    script.onerror = resolve; // resolve anyway — button will show error on click
+    script.onload = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id:   GOOGLE_CLIENT_ID,
+          callback:    window.handleGoogleCredential,
+          ux_mode:     'popup',
+          auto_select: false,
+        });
+        resolve();
+      } else {
+        reject(new Error('GIS não disponível após carregamento'));
+      }
+    };
+    script.onerror = () => reject(new Error('Falha ao carregar Google Sign-In'));
     document.head.appendChild(script);
   });
+
+  return _gisReady;
 }
 
 function initGoogle() {
@@ -308,16 +327,15 @@ function initGoogle() {
   const trigger     = btnLogin || btnRegister;
   if (!trigger) return;
 
-  // Load GIS dynamically AFTER handleGoogleCredential is already on window
-  _loadGIS().then(() => {
-    if (window.google?.accounts?.id) _initGIS();
-  });
+  // Pre-load GIS as soon as the page is ready
+  _loadAndInitGIS().catch(() => {});
 
-  trigger.addEventListener('click', () => {
-    if (window.google?.accounts?.id) {
+  trigger.addEventListener('click', async () => {
+    try {
+      await _loadAndInitGIS();
       window.google.accounts.id.prompt();
-    } else {
-      showError('Google Sign-In não está disponível. Recarregue a página.');
+    } catch (err) {
+      showError('Google Sign-In não está disponível. Verifique a ligação e tente novamente.');
     }
   });
 }
