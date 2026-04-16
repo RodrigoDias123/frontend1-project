@@ -1,0 +1,306 @@
+#!/bin/bash
+# =============================================================================
+# dev-task — Dev Tasks CLI
+# Talks to the json-server API at http://localhost:5500
+#
+# Usage:
+#   dev-task list [status]          List tasks (status: todo|doing|done|all)
+#   dev-task show <id>              Show task details
+#   dev-task new "Title" [priority] Create a new task
+#   dev-task start <id>             Move task to Doing
+#   dev-task done <id>              Move task to Done
+#   dev-task todo <id>              Move task to To Do
+#   dev-task commit "message"       Parse commit and update task
+#   dev-task help                   Show this help
+# =============================================================================
+
+BASE="http://localhost:5500"
+
+# Colors
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+BLUE="\033[0;34m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+# ── Dependency checks ──────────────────────────────────────────────────────────
+
+_check_deps() {
+  if ! command -v curl &>/dev/null; then
+    echo -e "${RED}Erro: 'curl' é necessário.${RESET}" >&2
+    exit 1
+  fi
+  if ! command -v python3 &>/dev/null; then
+    echo -e "${RED}Erro: 'python3' é necessário para manipular JSON.${RESET}" >&2
+    exit 1
+  fi
+}
+
+_check_server() {
+  if ! curl -s --max-time 2 "$BASE/tasks" > /dev/null 2>&1; then
+    echo -e "${RED}Erro: Servidor não disponível em $BASE${RESET}" >&2
+    echo -e "${YELLOW}Inicia o servidor com: make up${RESET}" >&2
+    exit 1
+  fi
+}
+
+# ── JSON helpers ───────────────────────────────────────────────────────────────
+
+_json_get() {
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$1','') if isinstance(d,dict) else '')" 2>/dev/null
+}
+
+_json_set_status() {
+  # $1 = new status
+  python3 -c "import sys,json; d=json.load(sys.stdin); d['status']='$1'; print(json.dumps(d))"
+}
+
+_json_field() {
+  # $1 = json string, $2 = field
+  echo "$1" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('$2','') if isinstance(d,dict) else '')" 2>/dev/null
+}
+
+# ── Commands ───────────────────────────────────────────────────────────────────
+
+cmd_list() {
+  local filter="${1:-all}"
+  local url="$BASE/tasks"
+  [[ "$filter" != "all" ]] && url="$BASE/tasks?status=$filter"
+
+  echo ""
+  echo -e "${BOLD}Dev Tasks${RESET} — ${CYAN}${filter}${RESET}"
+  echo "────────────────────────────────────────────────────"
+
+  local raw
+  raw=$(curl -s "$url")
+
+  if [[ -z "$raw" || "$raw" == "[]" ]]; then
+    echo -e "${YELLOW}  Nenhuma tarefa encontrada.${RESET}"
+    echo ""
+    return
+  fi
+
+  echo "$raw" | python3 -c "
+import sys, json
+tasks = json.load(sys.stdin)
+if not tasks:
+    print('  Nenhuma tarefa.')
+    sys.exit(0)
+colors = {'todo': '\033[0;34m', 'doing': '\033[0;33m', 'done': '\033[0;32m'}
+reset  = '\033[0m'
+for t in tasks:
+    status   = t.get('status','?')
+    priority = t.get('priority','?')
+    title    = t.get('title','?')
+    tid      = t.get('id','?')
+    color    = colors.get(status, reset)
+    print(f\"{color}  [#{tid:<4}] {status:<8} {priority:<6}  {title}{reset}\")
+"
+  echo ""
+}
+
+cmd_show() {
+  local id="$1"
+  [[ -z "$id" ]] && { echo -e "${RED}Uso: dev-task show <id>${RESET}"; exit 1; }
+
+  local raw
+  raw=$(curl -s "$BASE/tasks/$id")
+  [[ "$raw" == "null" || -z "$raw" || "$raw" == "{}" ]] && {
+    echo -e "${RED}Tarefa #$id não encontrada.${RESET}"; exit 1
+  }
+
+  echo ""
+  echo "$raw" | python3 -c "
+import sys, json
+t = json.load(sys.stdin)
+bold  = '\033[1m'
+reset = '\033[0m'
+cyan  = '\033[0;36m'
+print(f'  {bold}#{t.get(\"id\")} — {t.get(\"title\")}{reset}')
+print('  ' + '─' * 48)
+print(f'  {cyan}Estado:{reset}      {t.get(\"status\",\"—\")}')
+print(f'  {cyan}Prioridade:{reset}  {t.get(\"priority\",\"—\")}')
+print(f'  {cyan}Data:{reset}        {t.get(\"dueDate\",\"—\")}')
+labels = ', '.join(t.get('labels',[]) or [])
+print(f'  {cyan}Labels:{reset}      {labels or \"—\"}')
+sp = t.get('storyPoints','')
+if sp: print(f'  {cyan}Story Points:{reset} {sp}')
+eh = t.get('estimatedHours','')
+if eh: print(f'  {cyan}Estimativa:{reset}  {eh}h')
+desc = (t.get('description') or '').strip()
+if desc:
+    print()
+    print(f'  {cyan}Descrição:{reset}')
+    for line in desc.split('\n')[:8]:
+        print(f'    {line}')
+print()
+"
+}
+
+cmd_new() {
+  local title="$1"
+  [[ -z "$title" ]] && { echo -e "${RED}Uso: dev-task new \"Título da tarefa\" [alta|media|baixa]${RESET}"; exit 1; }
+  shift
+  local priority="${1:-media}"
+
+  # Validate priority
+  case "$priority" in alta|media|baixa) ;; *)
+    echo -e "${YELLOW}Prioridade inválida '$priority'. Usando 'media'.${RESET}"
+    priority="media";;
+  esac
+
+  # Due date: 7 days from now (cross-platform macOS + Linux)
+  local due
+  due=$(python3 -c "from datetime import date, timedelta; print((date.today()+timedelta(days=7)).isoformat())")
+
+  local payload
+  payload=$(python3 -c "
+import json, sys
+from datetime import datetime
+d = {
+    'title':       sys.argv[1],
+    'status':      'todo',
+    'priority':    sys.argv[2],
+    'dueDate':     sys.argv[3],
+    'description': '',
+    'labels':      [],
+    'blockedBy':   [],
+    'timeLog':     [],
+    'totalSeconds': 0,
+    'createdAt':   datetime.utcnow().isoformat() + 'Z',
+}
+print(json.dumps(d))
+" "$title" "$priority" "$due")
+
+  local result
+  result=$(curl -s -X POST -H "Content-Type: application/json" -d "$payload" "$BASE/tasks")
+  local new_id
+  new_id=$(_json_field "$result" "id")
+
+  echo -e "${GREEN}✓ Tarefa #${new_id} criada: ${title}${RESET}"
+}
+
+cmd_start() {
+  local id="$1"
+  [[ -z "$id" ]] && { echo -e "${RED}Uso: dev-task start <id>${RESET}"; exit 1; }
+  _update_status "$id" "doing"
+  echo -e "${YELLOW}▶ Tarefa #${id} movida para Doing.${RESET}"
+}
+
+cmd_done() {
+  local id="$1"
+  [[ -z "$id" ]] && { echo -e "${RED}Uso: dev-task done <id>${RESET}"; exit 1; }
+  _update_status "$id" "done"
+  echo -e "${GREEN}✓ Tarefa #${id} marcada como Done.${RESET}"
+}
+
+cmd_todo() {
+  local id="$1"
+  [[ -z "$id" ]] && { echo -e "${RED}Uso: dev-task todo <id>${RESET}"; exit 1; }
+  _update_status "$id" "todo"
+  echo -e "${BLUE}↩ Tarefa #${id} movida para To Do.${RESET}"
+}
+
+_update_status() {
+  local id="$1" new_status="$2"
+  local task
+  task=$(curl -s "$BASE/tasks/$id")
+  [[ "$task" == "null" || -z "$task" || "$task" == "{}" ]] && {
+    echo -e "${RED}Tarefa #$id não encontrada.${RESET}"; exit 1
+  }
+  local updated
+  updated=$(echo "$task" | _json_set_status "$new_status")
+  curl -s -X PUT -H "Content-Type: application/json" -d "$updated" "$BASE/tasks/$id" > /dev/null
+}
+
+cmd_commit() {
+  local msg="$*"
+  [[ -z "$msg" ]] && { echo -e "${RED}Uso: dev-task commit \"fix: closes #123 mensagem\"${RESET}"; exit 1; }
+
+  # Extract #id from commit message
+  local task_id
+  task_id=$(echo "$msg" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
+  if [[ -z "$task_id" ]]; then
+    echo -e "${YELLOW}Nenhuma referência de tarefa (#id) encontrada na mensagem.${RESET}"
+    echo -e "  Use o formato: ${CYAN}fix: closes #42 descrição${RESET}"
+    exit 0
+  fi
+
+  # Determine suggested status
+  local new_status="doing"
+  echo "$msg" | grep -qiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?|done|finish(ed)?|complet(ed)?)\b' \
+    && new_status="done"
+
+  local task
+  task=$(curl -s "$BASE/tasks/$task_id")
+  [[ "$task" == "null" || -z "$task" || "$task" == "{}" ]] && {
+    echo -e "${RED}Tarefa #$task_id não encontrada.${RESET}"; exit 1
+  }
+
+  local title
+  title=$(_json_field "$task" "title")
+
+  echo ""
+  echo -e "  ${BOLD}Tarefa detetada:${RESET} #${task_id} — ${title}"
+  echo -e "  ${BOLD}Estado sugerido:${RESET} ${new_status}"
+  echo ""
+  printf "  Aplicar? [s/N]: "
+  read -r confirm
+
+  if [[ "$confirm" =~ ^[sS]$ ]]; then
+    _update_status "$task_id" "$new_status"
+    echo -e "${GREEN}  ✓ Tarefa #${task_id} → ${new_status}${RESET}"
+  else
+    echo -e "${YELLOW}  Cancelado.${RESET}"
+  fi
+  echo ""
+}
+
+cmd_help() {
+  echo ""
+  echo -e "${BOLD}Dev Tasks CLI${RESET}"
+  echo "────────────────────────────────────────────────────"
+  echo -e "  ${GREEN}dev-task list [status]${RESET}                  Listar tarefas"
+  echo -e "       status: ${CYAN}todo | doing | done | all${RESET}"
+  echo ""
+  echo -e "  ${GREEN}dev-task show <id>${RESET}                      Ver detalhes"
+  echo -e "  ${GREEN}dev-task new \"título\" [prioridade]${RESET}       Criar tarefa"
+  echo -e "       prioridade: ${CYAN}alta | media | baixa${RESET}"
+  echo ""
+  echo -e "  ${GREEN}dev-task start <id>${RESET}                     → Doing"
+  echo -e "  ${GREEN}dev-task done <id>${RESET}                      → Done"
+  echo -e "  ${GREEN}dev-task todo <id>${RESET}                      → To Do"
+  echo ""
+  echo -e "  ${GREEN}dev-task commit \"mensagem\"${RESET}               Parsear commit"
+  echo -e "       Exemplo: ${CYAN}dev-task commit \"fix: closes #42 login bug\"${RESET}"
+  echo ""
+  echo -e "  ${GREEN}dev-task help${RESET}                           Esta ajuda"
+  echo ""
+  echo -e "  ${YELLOW}Servidor:${RESET} $BASE"
+  echo ""
+}
+
+# ── Main ───────────────────────────────────────────────────────────────────────
+
+_check_deps
+
+CMD="${1:-help}"
+shift 2>/dev/null
+
+case "$CMD" in
+  list)        _check_server; cmd_list "$@" ;;
+  show)        _check_server; cmd_show "$@" ;;
+  new)         _check_server; cmd_new "$@" ;;
+  start)       _check_server; cmd_start "$@" ;;
+  done)        _check_server; cmd_done "$@" ;;
+  todo)        _check_server; cmd_todo "$@" ;;
+  commit)      _check_server; cmd_commit "$@" ;;
+  help|--help|-h) cmd_help ;;
+  *)
+    echo -e "${RED}Comando desconhecido: ${CMD}${RESET}"
+    cmd_help
+    exit 1
+    ;;
+esac
