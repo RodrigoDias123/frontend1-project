@@ -1,0 +1,26 @@
+{
+  "name": "Dev Tasks — Kanban",
+  "short_name": "Dev Tasks",
+  "description": "Gestão de tarefas no formato Kanban com CRUD, drag & drop e modo offline.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "lang": "pt",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "public/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "public/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
