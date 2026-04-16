@@ -1,0 +1,17 @@
+services:
+
+  # json-server: serves the API at /tasks AND static files from /srv/public/
+  # Same origin (port 5500) → zero CORS issues, no nginx needed.
+  app:
+    image: node:20-alpine
+    container_name: devtasks
+    working_dir: /srv
+    volumes:
+      - ./:/srv/public:ro      # static files (read-only)
+      - ./data/db.json:/srv/db.json # database (writable — changes persist)
+    ports:
+      - "5500:5500"
+    command: >
+      sh -c "npm install -g json-server@0 --quiet &&
+             json-server --watch /srv/db.json --host 0.0.0.0 --port 5500"
+    restart: unless-stopped

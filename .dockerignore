@@ -1,0 +1,22 @@
+# Git / version control
+.git
+.gitignore
+
+# Editor / OS artefacts
+.DS_Store
+.vscode
+*.log
+Thumbs.db
+
+# Node modules (not used in static project)
+node_modules
+npm-debug.log*
+
+# Memory / docs
+AGENT.md
+*.md
+
+# Docker files themselves
+Dockerfile*
+docker-compose*.yml
+nginx.conf
