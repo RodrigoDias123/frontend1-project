@@ -11,6 +11,7 @@
  *  - Toast notifications
  */
 
+import { localFetch as fetch } from './localApi.js';
 import { getTasks, createTask, updateTask, deleteTask } from './api.js';
 import {
   saveCache,
