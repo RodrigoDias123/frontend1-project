@@ -191,46 +191,64 @@ function initRegister() {
   });
 }
 
-// ── Google Sign-In ────────────────────────────────────────────────────────────
+// ── Google OAuth (popup flow — sem GIS library) ───────────────────────────────
 
-/**
- * Decode the JWT payload from Google Identity Services credential.
- * No signature verification needed — Google already validated it client-side.
- */
-function _decodeJwt(token) {
-  try {
-    const payload = token.split('.')[1];
-    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(decoded);
-  } catch (_) { return null; }
-}
+const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
 
-/**
- * Global callback invoked by Google Identity Services after sign-in.
- * Must be on window so the GIS library can call it.
- */
-window.handleGoogleCredential = async function(response) {
-  const payload = _decodeJwt(response.credential);
-  if (!payload) {
-    showError('Falha ao processar credencial Google. Tente novamente.');
-    return;
+function _signInWithGoogle() {
+  const redirectUri = new URL('google-callback.html', location.href).href;
+  const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  redirectUri,
+    response_type: 'token',
+    scope:         'openid email profile',
+    prompt:        'select_account',
+  });
+
+  const popup = window.open(authUrl, 'google-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+
+  if (!popup) {
+    throw new Error('popup_blocked');
   }
 
-  const { sub: googleId, email, name, picture } = payload;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(poll);
+      window.removeEventListener('message', onMessage);
+      fn();
+    };
+
+    const onMessage = (e) => {
+      if (e.origin !== location.origin) return;
+      if (e.data?.type === 'google-auth-success') finish(() => resolve(e.data.user));
+      if (e.data?.type === 'google-auth-error')   finish(() => reject(new Error(e.data.error)));
+    };
+
+    const poll = setInterval(() => {
+      if (popup.closed) finish(() => reject(new Error('cancelled')));
+    }, 500);
+
+    window.addEventListener('message', onMessage);
+  });
+}
+
+async function _processGoogleUser({ sub: googleId, email, name, picture }) {
   const mode = document.getElementById('login-mode')?.value ?? 'solo';
   const isRegisterPage = !!document.getElementById('btn-google-register');
 
-  // Find existing user by googleId or email
-  const byGoogleId = await fetch(`/users?googleId=${encodeURIComponent(googleId)}`).then(r => r.json()).catch(() => []);
-  let user = byGoogleId[0];
+  let users = await fetch(`/users?googleId=${encodeURIComponent(googleId)}`).then(r => r.json()).catch(() => []);
+  let user = users[0];
 
   if (!user) {
-    const byEmail = await fetch(`/users?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => []);
-    user = byEmail[0];
+    users = await fetch(`/users?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => []);
+    user = users[0];
   }
 
   if (!user) {
-    // First Google login — auto-create account (only in solo mode or register page)
     if (mode === 'enterprise' && !isRegisterPage) {
       showError('Não existe conta empresarial associada a este email Google. Registe uma organização primeiro.');
       return;
@@ -243,11 +261,9 @@ window.handleGoogleCredential = async function(response) {
     if (!res.ok) { showError('Erro ao criar conta Google. Tente novamente.'); return; }
     user = await res.json();
   } else if (isRegisterPage) {
-    // Already has account — redirect to login instead of creating duplicate
     showError('Já existe uma conta com este email Google. Use a página de login.');
     return;
   } else {
-    // Link Google to existing account if not yet linked
     if (!user.googleId) {
       await fetch(`/users/${user.id}`, {
         method: 'PUT',
@@ -255,8 +271,6 @@ window.handleGoogleCredential = async function(response) {
         body: JSON.stringify({ ...user, googleId, picture }),
       });
     }
-
-    // Validate mode vs account type
     if (mode === 'enterprise' && !user.organizationId) {
       showError('Esta conta Google não está associada a nenhuma organização. Use o acesso Pessoal.');
       return;
@@ -278,66 +292,24 @@ window.handleGoogleCredential = async function(response) {
   }));
 
   window.location.href = user.organizationId ? 'app-enterprise.html' : 'app.html';
-};
-
-const GOOGLE_CLIENT_ID = '661228220614-f78g5rlstqikchqfj37acdatb3495j0g.apps.googleusercontent.com';
-
-let _gisReady = null; // Promise that resolves when GIS is initialized
-
-function _loadAndInitGIS() {
-  if (_gisReady) return _gisReady;
-
-  _gisReady = new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id:   GOOGLE_CLIENT_ID,
-        callback:    window.handleGoogleCredential,
-        ux_mode:     'popup',
-        auto_select: false,
-      });
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.onload = () => {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id:   GOOGLE_CLIENT_ID,
-          callback:    window.handleGoogleCredential,
-          ux_mode:     'popup',
-          auto_select: false,
-        });
-        resolve();
-      } else {
-        reject(new Error('GIS não disponível após carregamento'));
-      }
-    };
-    script.onerror = () => reject(new Error('Falha ao carregar Google Sign-In'));
-    document.head.appendChild(script);
-  });
-
-  return _gisReady;
 }
 
 function initGoogle() {
-  const container = document.getElementById('btn-google-login')
-                 || document.getElementById('btn-google-register');
-  if (!container) return;
+  const trigger = document.getElementById('btn-google-login')
+               || document.getElementById('btn-google-register');
+  if (!trigger) return;
 
-  // Load GIS dynamically AFTER handleGoogleCredential is on window
-  _loadAndInitGIS().then(() => {
-    window.google.accounts.id.renderButton(container, {
-      type:  'standard',
-      theme: 'outline',
-      size:  'large',
-      text:  container.id === 'btn-google-register' ? 'signup_with' : 'signin_with',
-      logo_alignment: 'left',
-      width: container.offsetWidth || 300,
-    });
-  }).catch(() => {
-    container.innerHTML = '<p class="text-muted small text-center mt-1">Google Sign-In indisponível.</p>';
+  trigger.addEventListener('click', async () => {
+    try {
+      const googleUser = await _signInWithGoogle();
+      await _processGoogleUser(googleUser);
+    } catch (err) {
+      if (err.message === 'popup_blocked') {
+        showError('Popup bloqueado. Permita popups para este site e tente novamente.');
+      } else if (err.message !== 'cancelled') {
+        showError('Erro ao autenticar com Google. Tente novamente.');
+      }
+    }
   });
 }
 
