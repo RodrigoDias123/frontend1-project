@@ -342,7 +342,9 @@ function _toast(message, type = 'info') {
   toastEl.classList.add(`toast--${type}`);
   msgEl.textContent = message;
 
-  window.bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3500 }).show();
+  const existing = window.bootstrap.Toast.getInstance(toastEl);
+  if (existing) existing.dispose();
+  new window.bootstrap.Toast(toastEl, { autohide: true, delay: 3500 }).show();
 }
 
 // ── Time Log (Pomodoro callback) ──────────────────────────────────────────────

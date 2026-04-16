@@ -93,8 +93,9 @@ function _toast(msg, type = 'primary') {
   if (!toastEl || !msgEl) return;
   msgEl.textContent = msg;
   toastEl.className = `toast align-items-center border-0 text-bg-${type}`;
-  const bsToast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
-  bsToast.show();
+  const existing = bootstrap.Toast.getInstance(toastEl);
+  if (existing) existing.dispose();
+  new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 }).show();
 }
 
 async function _handleEntSave(taskId, data) {
