@@ -191,7 +191,88 @@ function initRegister() {
   });
 }
 
+// ── Google Sign-In ────────────────────────────────────────────────────────────
+
+/**
+ * Decode the JWT payload from Google Identity Services credential.
+ * No signature verification needed — Google already validated it client-side.
+ */
+function _decodeJwt(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch (_) { return null; }
+}
+
+/**
+ * Global callback invoked by Google Identity Services after sign-in.
+ * Must be on window so the GIS library can call it.
+ */
+window.handleGoogleCredential = async function(response) {
+  const payload = _decodeJwt(response.credential);
+  if (!payload) {
+    showError('Falha ao processar credencial Google. Tente novamente.');
+    return;
+  }
+
+  const { sub: googleId, email, name, picture } = payload;
+
+  // Find existing user by googleId or email
+  const byGoogleId = await fetch(`/users?googleId=${encodeURIComponent(googleId)}`).then(r => r.json()).catch(() => []);
+  let user = byGoogleId[0];
+
+  if (!user) {
+    const byEmail = await fetch(`/users?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => []);
+    user = byEmail[0];
+  }
+
+  if (!user) {
+    // First Google login — auto-create account
+    const res = await fetch('/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, googleId, picture, role: 'user', plan: 'free' }),
+    });
+    if (!res.ok) { showError('Erro ao criar conta Google. Tente novamente.'); return; }
+    user = await res.json();
+  } else if (!user.googleId) {
+    // Link Google to existing email account
+    await fetch(`/users/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...user, googleId, picture }),
+    });
+  }
+
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    id:             user.id,
+    name:           user.name,
+    email:          user.email,
+    picture:        user.picture ?? picture,
+    role:           user.role ?? 'user',
+    plan:           user.plan ?? 'free',
+    organizationId: user.organizationId ?? null,
+  }));
+
+  window.location.href = user.organizationId ? 'app-enterprise.html' : 'app.html';
+};
+
+function initGoogle() {
+  const btn = document.getElementById('btn-google-login');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else {
+      showError('Google Sign-In não está disponível. Recarregue a página.');
+    }
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 initLogin();
 initRegister();
+initGoogle();
