@@ -218,6 +218,7 @@ window.handleGoogleCredential = async function(response) {
 
   const { sub: googleId, email, name, picture } = payload;
   const mode = document.getElementById('login-mode')?.value ?? 'solo';
+  const isRegisterPage = !!document.getElementById('btn-google-register');
 
   // Find existing user by googleId or email
   const byGoogleId = await fetch(`/users?googleId=${encodeURIComponent(googleId)}`).then(r => r.json()).catch(() => []);
@@ -229,8 +230,8 @@ window.handleGoogleCredential = async function(response) {
   }
 
   if (!user) {
-    // First Google login — auto-create account (only in solo mode)
-    if (mode === 'enterprise') {
+    // First Google login — auto-create account (only in solo mode or register page)
+    if (mode === 'enterprise' && !isRegisterPage) {
       showError('Não existe conta empresarial associada a este email Google. Registe uma organização primeiro.');
       return;
     }
@@ -241,6 +242,10 @@ window.handleGoogleCredential = async function(response) {
     });
     if (!res.ok) { showError('Erro ao criar conta Google. Tente novamente.'); return; }
     user = await res.json();
+  } else if (isRegisterPage) {
+    // Already has account — redirect to login instead of creating duplicate
+    showError('Já existe uma conta com este email Google. Use a página de login.');
+    return;
   } else {
     // Link Google to existing account if not yet linked
     if (!user.googleId) {
@@ -276,10 +281,13 @@ window.handleGoogleCredential = async function(response) {
 };
 
 function initGoogle() {
-  const btn = document.getElementById('btn-google-login');
-  if (!btn) return;
+  const btnLogin    = document.getElementById('btn-google-login');
+  const btnRegister = document.getElementById('btn-google-register');
 
-  btn.addEventListener('click', () => {
+  const trigger = btnLogin || btnRegister;
+  if (!trigger) return;
+
+  trigger.addEventListener('click', () => {
     if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     } else {
