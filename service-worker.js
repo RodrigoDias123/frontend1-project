@@ -3,7 +3,7 @@
  * Strategy: Cache First for static assets, pass-through for API (json-server).
  */
 
-const CACHE_NAME = 'devtasks-v4';
+const CACHE_NAME = 'devtasks-v5';
 
 // Only pre-cache the app shell — CDN resources have their own cache headers
 const STATIC_ASSETS = [
