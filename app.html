@@ -5,187 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Dev Tasks — Gestão de tarefas no formato Kanban" />
   <meta name="theme-color" content="#0d1117" />
-
   <title>Dev Tasks</title>
 
-  <!-- Favicon -->
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
 
-  <!-- Unregister any stale Service Workers immediately (before modules load) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
-      });
-    }
-    // Auth guard — redirect to login if not authenticated
-    (function() {
-      var user = localStorage.getItem('devtasks_user');
-      if (!user) { window.location.replace('login.html'); }
-    })();
-  </script>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
-
   <!-- Bootstrap 5 -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    crossorigin="anonymous"
-  />
-
-  <!-- Bootstrap Icons -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
 
   <!-- Custom styles -->
   <link rel="stylesheet" href="src/css/styles.css" />
   <link rel="stylesheet" href="src/css/features.css" />
 
-  <!-- highlight.js (syntax highlighting inside markdown) -->
+  <!-- highlight.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" />
 </head>
 <body>
 
   <!-- ===== HEADER ===== -->
-  <header class="app-header" role="banner">
-    <div class="container-fluid px-4 d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center gap-3">
-        <span class="app-logo" aria-hidden="true">
-          <i class="bi bi-kanban-fill"></i>
-        </span>
-        <h1 class="app-title mb-0">Dev Tasks</h1>
+  <app-navbar variant="app" home-href="index.html" page-title="Dev Tasks" logo-icon="bi-kanban-fill">
+    <div slot="actions" class="d-flex align-items-center gap-2">
+      <button
+        id="btn-toggle-stats"
+        class="btn btn-outline-secondary btn-sm"
+        aria-expanded="false"
+        aria-controls="stats-panel"
+        title="Ver estatísticas"
+      >
+        <i class="bi bi-bar-chart-fill me-1" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Estatísticas</span>
+      </button>
+
+      <button
+        id="btn-new-task"
+        class="btn btn-primary btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#taskModal"
+        aria-label="Criar nova tarefa"
+      >
+        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Nova Tarefa</span>
+      </button>
+
+      <!-- Export dropdown -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-label="Exportar">
+          <i class="bi bi-download" aria-hidden="true"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button class="dropdown-item small" id="btn-export-json">
+              <i class="bi bi-filetype-json me-2 text-warning" aria-hidden="true"></i>Exportar JSON
+            </button>
+          </li>
+          <li>
+            <button class="dropdown-item small" id="btn-export-csv">
+              <i class="bi bi-filetype-csv me-2 text-success" aria-hidden="true"></i>Exportar CSV
+            </button>
+          </li>
+        </ul>
       </div>
 
-      <div class="d-flex align-items-center gap-2">
-        <button
-          id="btn-profile"
-          class="btn-user-avatar d-none"
-          title="Perfil"
-          aria-label="Ver perfil"
-        >
-          <img id="user-avatar-photo" class="d-none" alt="Foto de perfil" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
-          <span id="user-avatar-initials"></span>
-        </button>
-
-        <button
-          id="btn-cmd-palette"
-          class="btn btn-outline-secondary btn-sm d-none d-sm-inline-flex align-items-center gap-1"
-          title="Paleta de comandos (Ctrl+K)"
-        >
-          <i class="bi bi-search" aria-hidden="true"></i>
-          <kbd style="font-size:.65rem;padding:.05rem .3rem;background:rgba(255,255,255,.08);border-radius:.2rem">Ctrl+K</kbd>
-        </button>
-
-        <button
-          id="btn-toggle-stats"
-          class="btn btn-outline-secondary btn-sm"
-          aria-expanded="false"
-          aria-controls="stats-panel"
-          title="Ver estatísticas (S)"
-        >
-          <i class="bi bi-bar-chart-fill me-1" aria-hidden="true"></i>
-          <span class="d-none d-sm-inline">Estatísticas</span>
-        </button>
-
-        <button
-          id="btn-new-task"
-          class="btn btn-primary btn-sm"
-          data-bs-toggle="modal"
-          data-bs-target="#taskModal"
-          aria-label="Criar nova tarefa (N)"
-        >
-          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
-          <span class="d-none d-sm-inline">Nova Tarefa</span>
-        </button>
-
-        <!-- More actions dropdown -->
-        <div class="dropdown">
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-label="Mais ações">
-            <i class="bi bi-three-dots" aria-hidden="true"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><h6 class="dropdown-header small">Exportar</h6></li>
-            <li>
-              <button class="dropdown-item small" id="btn-export-json">
-                <i class="bi bi-filetype-json me-2 text-warning" aria-hidden="true"></i>Exportar JSON
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-export-csv">
-                <i class="bi bi-filetype-csv me-2 text-success" aria-hidden="true"></i>Exportar CSV
-              </button>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li><h6 class="dropdown-header small">Ferramentas</h6></li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-dag">
-                <i class="bi bi-diagram-3 me-2 text-info" aria-hidden="true"></i>Dependências (D)
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-automations">
-                <i class="bi bi-gear-wide-connected me-2 text-secondary" aria-hidden="true"></i>Automações (A)
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-pomodoro">
-                <i class="bi bi-stopwatch me-2 text-danger" aria-hidden="true"></i>Pomodoro (P)
-              </button>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li><h6 class="dropdown-header small">Dev Tools</h6></li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-git-tools">
-                <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools (G)
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-deep-work">
-                <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco (F)
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-postmortem">
-                <i class="bi bi-file-earmark-text me-2 text-success" aria-hidden="true"></i>Post-mortem
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small" id="btn-show-tech-debt">
-                <i class="bi bi-bug-fill me-2 text-danger" aria-hidden="true"></i>Débito Técnico
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small d-none" id="btn-view-snapshot">
-                <i class="bi bi-arrow-counterclockwise me-2 text-warning" aria-hidden="true"></i>Retomar contexto
-                <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">!</span>
-              </button>
-            </li>
-            <li><hr class="dropdown-divider d-none" id="org-users-divider" /></li>
-            <li>
-              <button class="dropdown-item small d-none" id="btn-show-org-users"
-                data-bs-toggle="modal" data-bs-target="#orgUsersModal">
-                <i class="bi bi-people-fill me-2 text-info" aria-hidden="true"></i>Gerir Utilizadores
-                <span class="badge bg-info text-dark ms-1" style="font-size:.6rem">Admin</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <button
-          id="btn-logout"
-          class="btn btn-outline-danger btn-sm"
-          title="Terminar sessão"
-        >
-          <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>
-          <span class="d-none d-sm-inline">Sair</span>
-        </button>
-      </div>
+      <a
+        href="index.html"
+        class="btn btn-outline-danger btn-sm"
+        title="Voltar à página inicial"
+      >
+        <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Sair</span>
+      </a>
     </div>
-  </header>
+  </app-navbar>
 
   <!-- ===== STATS PANEL ===== -->
   <section
@@ -196,45 +86,38 @@
   >
     <div class="container-fluid px-4 py-3">
       <div class="row g-3 align-items-center">
-        <!-- Summary cards -->
         <div class="col-12 col-lg-5">
           <div class="row g-2">
             <div class="col-4">
-              <div class="stat-card stat-card--todo" role="status" aria-label="Total de tarefas a fazer">
+              <div class="stat-card stat-card--todo" role="status">
                 <span class="stat-card__count" id="count-todo">0</span>
                 <span class="stat-card__label">To Do</span>
               </div>
             </div>
             <div class="col-4">
-              <div class="stat-card stat-card--doing" role="status" aria-label="Total de tarefas em progresso">
+              <div class="stat-card stat-card--doing" role="status">
                 <span class="stat-card__count" id="count-doing">0</span>
                 <span class="stat-card__label">Doing</span>
               </div>
             </div>
             <div class="col-4">
-              <div class="stat-card stat-card--done" role="status" aria-label="Total de tarefas concluídas">
+              <div class="stat-card stat-card--done" role="status">
                 <span class="stat-card__count" id="count-done">0</span>
                 <span class="stat-card__label">Done</span>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Chart -->
         <div class="col-12 col-lg-7">
           <div class="chart-wrapper">
-            <canvas
-              id="stats-chart"
-              aria-label="Gráfico de estatísticas das tarefas"
-              role="img"
-            ></canvas>
+            <canvas id="stats-chart" aria-label="Gráfico de estatísticas" role="img"></canvas>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ===== MAIN — KANBAN BOARD ===== -->
+  <!-- ===== KANBAN BOARD ===== -->
   <main id="board" class="kanban-board" aria-label="Quadro Kanban">
     <div class="container-fluid px-4 h-100">
       <div class="kanban-columns">
@@ -244,11 +127,7 @@
           <div class="kanban-column__header">
             <span class="column-dot column-dot--todo" aria-hidden="true"></span>
             <h2 class="kanban-column__title" id="col-title-todo">To Do</h2>
-            <span
-              class="column-badge"
-              id="badge-todo"
-              aria-label="Número de tarefas a fazer"
-            >0</span>
+            <span class="column-badge" id="badge-todo">0</span>
             <button
               class="btn-add-inline ms-auto"
               data-column="todo"
@@ -259,15 +138,7 @@
               <i class="bi bi-plus-lg" aria-hidden="true"></i>
             </button>
           </div>
-          <div
-            id="list-todo"
-            class="kanban-column__list"
-            data-column="todo"
-            role="list"
-            aria-label="Lista de tarefas a fazer"
-          >
-            <!-- task-card elements injected here -->
-          </div>
+          <div id="list-todo" class="kanban-column__list" data-column="todo" role="list"></div>
         </section>
 
         <!-- DOING -->
@@ -275,11 +146,7 @@
           <div class="kanban-column__header">
             <span class="column-dot column-dot--doing" aria-hidden="true"></span>
             <h2 class="kanban-column__title" id="col-title-doing">Doing</h2>
-            <span
-              class="column-badge"
-              id="badge-doing"
-              aria-label="Número de tarefas em progresso"
-            >0</span>
+            <span class="column-badge" id="badge-doing">0</span>
             <button
               class="btn-add-inline ms-auto"
               data-column="doing"
@@ -290,14 +157,7 @@
               <i class="bi bi-plus-lg" aria-hidden="true"></i>
             </button>
           </div>
-          <div
-            id="list-doing"
-            class="kanban-column__list"
-            data-column="doing"
-            role="list"
-            aria-label="Lista de tarefas em progresso"
-          >
-          </div>
+          <div id="list-doing" class="kanban-column__list" data-column="doing" role="list"></div>
         </section>
 
         <!-- DONE -->
@@ -305,11 +165,7 @@
           <div class="kanban-column__header">
             <span class="column-dot column-dot--done" aria-hidden="true"></span>
             <h2 class="kanban-column__title" id="col-title-done">Done</h2>
-            <span
-              class="column-badge"
-              id="badge-done"
-              aria-label="Número de tarefas concluídas"
-            >0</span>
+            <span class="column-badge" id="badge-done">0</span>
             <button
               class="btn-add-inline ms-auto"
               data-column="done"
@@ -320,14 +176,7 @@
               <i class="bi bi-plus-lg" aria-hidden="true"></i>
             </button>
           </div>
-          <div
-            id="list-done"
-            class="kanban-column__list"
-            data-column="done"
-            role="list"
-            aria-label="Lista de tarefas concluídas"
-          >
-          </div>
+          <div id="list-done" class="kanban-column__list" data-column="done" role="list"></div>
         </section>
 
       </div>
@@ -341,7 +190,7 @@
 
         <div class="modal-header">
           <h2 class="modal-title fs-5" id="taskModalLabel">Nova Tarefa</h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
         <div class="modal-body">
@@ -349,7 +198,7 @@
             <input type="hidden" id="task-id" />
             <input type="hidden" id="task-column" value="todo" />
 
-            <!-- ── Tabs ── -->
+            <!-- Tabs -->
             <ul class="nav nav-tabs mb-3 small" id="task-tabs" role="tablist">
               <li class="nav-item" role="presentation">
                 <button class="nav-link active py-1 px-3" id="tab-geral-btn"
@@ -379,18 +228,17 @@
 
             <div class="tab-content">
 
-              <!-- ══ Tab: Geral ══ -->
+              <!-- Tab: Geral -->
               <div class="tab-pane fade show active" id="tab-geral-pane" role="tabpanel">
 
-                <!-- Título -->
                 <div class="mb-3">
                   <label for="task-title" class="form-label">
                     Título <span class="text-danger" aria-hidden="true">*</span>
                   </label>
                   <input type="text" class="form-control" id="task-title"
                     placeholder="Nome da tarefa" minlength="3" maxlength="100"
-                    required aria-describedby="title-error" autocomplete="off" />
-                  <div class="invalid-feedback" id="title-error" role="alert" aria-live="polite">
+                    required autocomplete="off" />
+                  <div class="invalid-feedback" id="title-error" role="alert">
                     O título é obrigatório e deve ter pelo menos 3 caracteres.
                   </div>
                 </div>
@@ -418,19 +266,19 @@
                     placeholder="ex: bug, frontend, deploy" autocomplete="off" />
                 </div>
 
-                <!-- Prioridade + Data (lado a lado) -->
+                <!-- Prioridade + Data -->
                 <div class="row g-3 mb-3">
                   <div class="col-6">
                     <label for="task-priority" class="form-label">
                       Prioridade <span class="text-danger" aria-hidden="true">*</span>
                     </label>
-                    <select class="form-select" id="task-priority" required aria-describedby="priority-error">
+                    <select class="form-select" id="task-priority" required>
                       <option value="">Selecionar...</option>
                       <option value="baixa">Baixa</option>
                       <option value="media">Média</option>
                       <option value="alta">Alta</option>
                     </select>
-                    <div class="invalid-feedback" id="priority-error" role="alert" aria-live="polite">
+                    <div class="invalid-feedback" id="priority-error" role="alert">
                       A prioridade é obrigatória.
                     </div>
                   </div>
@@ -438,9 +286,8 @@
                     <label for="task-due-date" class="form-label">
                       Data de Entrega <span class="text-danger" aria-hidden="true">*</span>
                     </label>
-                    <input type="date" class="form-control" id="task-due-date"
-                      required aria-describedby="date-error" />
-                    <div class="invalid-feedback" id="date-error" role="alert" aria-live="polite">
+                    <input type="date" class="form-control" id="task-due-date" required />
+                    <div class="invalid-feedback" id="date-error" role="alert">
                       A data é obrigatória e não pode ser no passado.
                     </div>
                   </div>
@@ -455,14 +302,12 @@
                     <option value="done">Done</option>
                   </select>
                 </div>
-
               </div>
 
-              <!-- ══ Tab: Links ══ -->
+              <!-- Tab: Links -->
               <div class="tab-pane fade" id="tab-links-pane" role="tabpanel">
                 <p class="text-muted small mb-3">Liga esta tarefa ao teu ecossistema de ferramentas.</p>
                 <div class="link-field-group">
-
                   <div class="link-field-row">
                     <div class="link-icon text-primary"><i class="bi bi-code-slash" aria-hidden="true"></i></div>
                     <div>
@@ -471,7 +316,6 @@
                         placeholder="vscode://file//caminho/para/ficheiro.ts:42" />
                     </div>
                   </div>
-
                   <div class="link-field-row">
                     <div class="link-icon" style="color:#a259ff"><i class="bi bi-vector-pen" aria-hidden="true"></i></div>
                     <div>
@@ -480,7 +324,6 @@
                         placeholder="https://figma.com/file/..." />
                     </div>
                   </div>
-
                   <div class="link-field-row">
                     <div class="link-icon" style="color:#85ea2d"><i class="bi bi-file-earmark-code" aria-hidden="true"></i></div>
                     <div>
@@ -489,7 +332,6 @@
                         placeholder="https://api.exemplo.com/docs" />
                     </div>
                   </div>
-
                   <div class="link-field-row">
                     <div class="link-icon" style="color:#ff4785"><i class="bi bi-palette2" aria-hidden="true"></i></div>
                     <div>
@@ -498,7 +340,6 @@
                         placeholder="https://storybook.exemplo.com" />
                     </div>
                   </div>
-
                   <div class="link-field-row">
                     <div class="link-icon text-secondary"><i class="bi bi-link-45deg" aria-hidden="true"></i></div>
                     <div>
@@ -507,63 +348,52 @@
                         placeholder="https://..." />
                     </div>
                   </div>
-
                 </div>
               </div>
 
-              <!-- ══ Tab: Dependências ══ -->
+              <!-- Tab: Dependências -->
               <div class="tab-pane fade" id="tab-deps-pane" role="tabpanel">
                 <p class="text-muted small mb-3">
                   Tarefas marcadas como <strong>Blocked by</strong> têm de ser concluídas antes desta poder avançar.
                 </p>
-
                 <div class="mb-3">
                   <label for="task-blocked-by" class="form-label">Bloqueado por (blocked by)</label>
-                  <select class="form-select" id="task-blocked-by" multiple size="6" aria-describedby="deps-help">
-                    <!-- Populated dynamically by modal.js -->
+                  <select class="form-select" id="task-blocked-by" multiple size="6">
+                    <!-- Populated dynamically -->
                   </select>
-                  <div id="deps-help" class="form-text">Segura <kbd>Ctrl</kbd> para selecionar múltiplas tarefas.</div>
+                  <div class="form-text">Segura <kbd>Ctrl</kbd> para selecionar múltiplas tarefas.</div>
                 </div>
-
-                <!-- Time log (only in edit mode) -->
                 <div id="task-time-log" hidden>
-                  <label class="form-label">Registo de Tempo <small class="text-muted fw-normal">(Pomodoro)</small></label>
+                  <label class="form-label">Registo de Tempo</label>
                   <div id="time-log-content" class="text-muted small"></div>
                 </div>
-
               </div>
 
-              <!-- ══ Tab: Dev ══ -->
+              <!-- Tab: Dev -->
               <div class="tab-pane fade" id="tab-dev-pane" role="tabpanel">
-                <p class="text-muted small mb-3">Estimativas de esforço e pontos de história para este trabalho.</p>
-
-                <!-- Estimate warning banner -->
+                <p class="text-muted small mb-3">Estimativas de esforço e pontos de história.</p>
                 <div id="estimate-warning" class="alert alert-warning small py-2 d-none" role="alert"></div>
-
-                <!-- Estimated hours + Story points -->
                 <div class="row g-3 mb-3">
                   <div class="col-6">
                     <label for="task-estimated-hours" class="form-label">Estimativa (horas)</label>
                     <input type="number" class="form-control" id="task-estimated-hours"
                       min="0.5" step="0.5" placeholder="ex: 4" />
-                    <div class="form-text">Quantas horas esperas gastar?</div>
                   </div>
                   <div class="col-6">
                     <label for="task-story-points" class="form-label">Story Points</label>
                     <div class="input-group">
                       <input type="number" class="form-control" id="task-story-points"
                         min="1" max="21" step="1" placeholder="ex: 3" />
-                      <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-suggest-sp" title="Sugerir baseado na descrição">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-suggest-sp" title="Sugerir">
                         <i class="bi bi-stars" aria-hidden="true"></i>
                       </button>
                     </div>
                     <small id="story-points-suggestion" class="text-info d-none"></small>
                   </div>
                 </div>
-
               </div>
 
-            </div><!-- /tab-content -->
+            </div>
           </form>
         </div>
 
@@ -578,22 +408,39 @@
     </div>
   </div>
 
-  <!-- ===== COMMAND PALETTE (Ctrl+K) ===== -->
-  <div id="cmd-palette" class="cmd-palette-overlay" hidden
-       role="dialog" aria-modal="true" aria-label="Paleta de comandos">
-    <div class="cmd-palette-box">
-      <div class="cmd-palette-search">
-        <i class="bi bi-search cmd-search-icon" aria-hidden="true"></i>
-        <input id="cmd-input" type="text" placeholder="Pesquisar comandos..."
-          autocomplete="off" spellcheck="false" aria-label="Pesquisar comandos" />
-        <kbd class="cmd-esc">Esc</kbd>
+  <!-- ===== DELETE CONFIRM MODAL ===== -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h2 class="modal-title fs-6" id="deleteModalLabel">
+            <i class="bi bi-exclamation-triangle-fill text-danger me-2" aria-hidden="true"></i>
+            Eliminar Tarefa
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <p class="mb-0 text-muted small">
+            Tens a certeza que queres eliminar esta tarefa? Esta ação não pode ser desfeita.
+          </p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="btn-confirm-delete" class="btn btn-danger btn-sm">
+            <i class="bi bi-trash-fill me-1" aria-hidden="true"></i>Eliminar
+          </button>
+        </div>
       </div>
-      <ul id="cmd-list" class="cmd-list" role="listbox" aria-label="Resultados"></ul>
-      <div class="cmd-palette-footer">
-        <span><kbd>↑↓</kbd> navegar</span>
-        <span><kbd>Enter</kbd> executar</span>
-        <span><kbd>Esc</kbd> fechar</span>
-        <span><kbd>Ctrl+K</kbd> paleta</span>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="true">
+    <div id="app-toast" class="toast align-items-center border-0" role="alert"
+      data-bs-autohide="true" data-bs-delay="3500">
+      <div class="d-flex">
+        <div class="toast-body" id="toast-message">Operação concluída.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
       </div>
     </div>
   </div>
@@ -626,747 +473,25 @@
     </div>
   </div>
 
-  <!-- ===== AUTOMATIONS MODAL ===== -->
-  <div class="modal fade" id="automationsModal" tabindex="-1" aria-labelledby="automationsModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="automationsModalLabel">
-            <i class="bi bi-gear-wide-connected me-2" aria-hidden="true"></i>Automações
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small">
-            Define regras <em>Se [evento] → então [ação]</em> para automatizar o teu workflow.
-          </p>
-
-          <!-- Add Rule Form -->
-          <div class="border border-secondary-subtle rounded p-3 mb-3">
-            <h6 class="mb-3 small fw-semibold"><i class="bi bi-plus-circle me-1"></i>Nova Regra</h6>
-            <div class="rule-form-grid">
-              <div>
-                <label class="form-label small">Nome da regra</label>
-                <input type="text" class="form-control form-control-sm" id="rule-name"
-                  placeholder="Ex: Notificar quando tarefa é concluída" />
-              </div>
-              <div class="row g-2">
-                <div class="col-4">
-                  <label class="form-label small">Evento</label>
-                  <select class="form-select form-select-sm" id="rule-trigger">
-                    <option value="status_changed">Status alterado</option>
-                    <option value="task_created">Tarefa criada</option>
-                    <option value="task_overdue">Tarefa vencida</option>
-                  </select>
-                </div>
-                <div class="col-3">
-                  <label class="form-label small">Campo</label>
-                  <select class="form-select form-select-sm" id="rule-cond-field">
-                    <option value="">Nenhum</option>
-                    <option value="newStatus">Novo estado</option>
-                    <option value="priority">Prioridade</option>
-                    <option value="status">Estado atual</option>
-                  </select>
-                </div>
-                <div class="col-2">
-                  <label class="form-label small">Op</label>
-                  <select class="form-select form-select-sm" id="rule-cond-op">
-                    <option value="eq">é</option>
-                    <option value="neq">não é</option>
-                  </select>
-                </div>
-                <div class="col-3">
-                  <label class="form-label small">Valor</label>
-                  <input type="text" class="form-control form-control-sm" id="rule-cond-val"
-                    placeholder="ex: done" />
-                </div>
-              </div>
-              <div class="row g-2">
-                <div class="col-4">
-                  <label class="form-label small">Ação</label>
-                  <select class="form-select form-select-sm" id="rule-action-type">
-                    <option value="show_toast">Mostrar notificação</option>
-                    <option value="move_to">Mover para estado</option>
-                    <option value="add_label">Adicionar label</option>
-                  </select>
-                </div>
-                <div class="col-8">
-                  <label class="form-label small">Parâmetro (valor da ação)</label>
-                  <input type="text" class="form-control form-control-sm" id="rule-action-param"
-                    placeholder="ex: done / deploy-ready / 🚀 deploy pronto" />
-                </div>
-              </div>
-              <div>
-                <button type="button" class="btn btn-sm btn-primary" id="btn-add-rule">
-                  <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Adicionar Regra
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Rules List -->
-          <div id="rules-list"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
+  <!-- ===== COMMAND PALETTE ===== -->
+  <div id="cmd-palette" class="cmd-palette-overlay" hidden role="dialog" aria-modal="true" aria-label="Paleta de comandos">
+    <div class="cmd-palette-box">
+      <div class="cmd-palette-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input id="cmd-input" type="text" placeholder="Pesquisar comandos…" autocomplete="off" aria-label="Pesquisar comandos" />
       </div>
-    </div>
-  </div>
-
-  <!-- ===== DAG / DEPENDENCIES MODAL ===== -->
-  <div class="modal fade" id="dagModal" tabindex="-1" aria-labelledby="dagModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="dagModalLabel">
-            <i class="bi bi-diagram-3 me-2" aria-hidden="true"></i>Grafo de Dependências
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div id="dag-content">
-            <p class="text-muted small text-center py-3">Nenhuma dependência definida.</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== PROFILE MODAL ===== -->
-  <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
-
-        <div class="modal-header border-0 pb-0">
-          <h2 class="modal-title fs-5" id="profileModalLabel">
-            <i class="bi bi-person-circle me-2" aria-hidden="true"></i>Perfil
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-
-        <div class="modal-body pt-2">
-
-          <!-- Avatar + info -->
-          <div class="profile-hero text-center mb-4">
-            <label class="profile-avatar-wrap mx-auto mb-3" for="profile-avatar-input" title="Alterar foto de perfil">
-              <div class="profile-avatar-lg" id="profile-avatar-lg"></div>
-              <span class="profile-avatar-edit-icon"><i class="bi bi-camera-fill"></i></span>
-            </label>
-            <input type="file" id="profile-avatar-input" accept="image/*" class="d-none">
-            <h3 class="fs-5 fw-semibold mb-0" id="profile-name-display">—</h3>
-            <p class="text-muted small mb-0" id="profile-email-display">—</p>
-          </div>
-
-          <!-- Separador -->
-          <hr class="border-secondary-subtle" />
-
-          <!-- Stats pessoais -->
-          <div class="row g-2 text-center mb-4">
-            <div class="col-4">
-              <div class="profile-stat-box">
-                <div class="profile-stat-num" id="pstat-total">0</div>
-                <div class="profile-stat-label">Tarefas</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="profile-stat-box">
-                <div class="profile-stat-num text-success" id="pstat-done">0</div>
-                <div class="profile-stat-label">Concluídas</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="profile-stat-box">
-                <div class="profile-stat-num text-warning" id="pstat-time">0h</div>
-                <div class="profile-stat-label">Tempo total</div>
-              </div>
-            </div>
-          </div>
-
-          <hr class="border-secondary-subtle" />
-
-          <!-- Editar nome -->
-          <div class="mb-3">
-            <label for="profile-name-input" class="form-label small fw-semibold">Nome</label>
-            <div class="input-group input-group-sm">
-              <input type="text" class="form-control" id="profile-name-input"
-                placeholder="O teu nome" autocomplete="name" />
-              <button class="btn btn-outline-primary" id="btn-save-name" type="button">
-                <i class="bi bi-floppy-fill" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Alterar password -->
-          <details class="mb-3">
-            <summary class="small fw-semibold text-muted" style="cursor:pointer;user-select:none;list-style:none">
-              <i class="bi bi-lock-fill me-1"></i>Alterar palavra-passe
-              <i class="bi bi-chevron-down ms-1" style="font-size:.7rem"></i>
-            </summary>
-            <div class="mt-3">
-              <div class="mb-2">
-                <label for="profile-pw-current" class="form-label small">Palavra-passe atual</label>
-                <input type="password" class="form-control form-control-sm" id="profile-pw-current"
-                  autocomplete="current-password" />
-              </div>
-              <div class="mb-2">
-                <label for="profile-pw-new" class="form-label small">Nova palavra-passe</label>
-                <input type="password" class="form-control form-control-sm" id="profile-pw-new"
-                  autocomplete="new-password" minlength="6" />
-              </div>
-              <div class="mb-3">
-                <label for="profile-pw-confirm" class="form-label small">Confirmar nova</label>
-                <input type="password" class="form-control form-control-sm" id="profile-pw-confirm"
-                  autocomplete="new-password" minlength="6" />
-              </div>
-              <button class="btn btn-sm btn-outline-primary w-100" id="btn-save-password" type="button">
-                <i class="bi bi-shield-lock-fill me-1"></i>Guardar palavra-passe
-              </button>
-            </div>
-          </details>
-
-          <!-- Mensagem de feedback -->
-          <div id="profile-msg" class="d-none alert py-2 small" role="alert"></div>
-
-          <hr class="border-secondary-subtle" />
-
-          <!-- Zona perigosa -->
-          <details>
-            <summary class="small fw-semibold text-danger" style="cursor:pointer;user-select:none;list-style:none">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>Zona perigosa
-              <i class="bi bi-chevron-down ms-1" style="font-size:.7rem"></i>
-            </summary>
-            <div class="mt-3">
-              <p class="small text-muted mb-2">Terminar sessão em todos os dispositivos ou apagar a conta permanentemente.</p>
-              <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-warning flex-fill" id="btn-logout-all">
-                  <i class="bi bi-box-arrow-right me-1"></i>Terminar sessão
-                </button>
-                <button class="btn btn-sm btn-outline-danger flex-fill" id="btn-delete-account">
-                  <i class="bi bi-trash-fill me-1"></i>Apagar conta
-                </button>
-              </div>
-            </div>
-          </details>
-
-        </div>
-
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-outline-secondary btn-sm w-100" data-bs-dismiss="modal">Fechar</button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== DELETE CONFIRM MODAL ===== -->
-  <div
-    class="modal fade"
-    id="deleteModal"
-    tabindex="-1"
-    aria-labelledby="deleteModalLabel"
-  >
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-      <div class="modal-content">
-        <div class="modal-header border-0 pb-0">
-          <h2 class="modal-title fs-6" id="deleteModalLabel">
-            <i class="bi bi-exclamation-triangle-fill text-danger me-2" aria-hidden="true"></i>
-            Eliminar Tarefa
-          </h2>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="Fechar"
-          ></button>
-        </div>
-        <div class="modal-body pt-2">
-          <p class="mb-0 text-muted small">
-            Tens a certeza que queres eliminar esta tarefa? Esta ação não pode ser desfeita.
-          </p>
-        </div>
-        <div class="modal-footer border-0">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm"
-            data-bs-dismiss="modal"
-          >Cancelar</button>
-          <button
-            type="button"
-            id="btn-confirm-delete"
-            class="btn btn-danger btn-sm"
-          >
-            <i class="bi bi-trash-fill me-1" aria-hidden="true"></i>
-            Eliminar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== TOAST NOTIFICATIONS ===== -->
-  <div
-    class="toast-container position-fixed bottom-0 end-0 p-3"
-    aria-live="polite"
-    aria-atomic="true"
-  >
-    <div
-      id="app-toast"
-      class="toast align-items-center border-0"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-      data-bs-autohide="true"
-      data-bs-delay="3500"
-    >
-      <div class="d-flex">
-        <div class="toast-body" id="toast-message">Operação concluída.</div>
-        <button
-          type="button"
-          class="btn-close btn-close-white me-2 m-auto"
-          data-bs-dismiss="toast"
-          aria-label="Fechar notificação"
-        ></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== OFFLINE BANNER ===== -->
-  <div
-    id="offline-banner"
-    class="offline-banner"
-    role="status"
-    aria-live="polite"
-    hidden
-  >
-    <i class="bi bi-wifi-off me-2" aria-hidden="true"></i>
-    Sem ligação à internet — a trabalhar em modo offline.
-  </div>
-
-  <!-- ===== ERROR OVERLAY (dev helper — remove in production) ===== -->
-  <div id="err-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,17,23,.96);z-index:99999;padding:2rem;overflow:auto;font-family:monospace;font-size:.85rem;color:#f85149;">
-    <strong style="font-size:1rem;">⚠ JS Error</strong>
-    <pre id="err-msg" style="margin-top:1rem;white-space:pre-wrap;word-break:break-all;"></pre>
-  </div>
-  <script>
-    window.addEventListener('error', function(e) {
-      var o = document.getElementById('err-overlay');
-      var m = document.getElementById('err-msg');
-      if (o && m) { m.textContent = (e.message || '') + '\n' + (e.filename || '') + ':' + e.lineno + '\n\n' + (e.error && e.error.stack || ''); o.style.display = 'block'; }
-    });
-    window.addEventListener('unhandledrejection', function(e) {
-      var o = document.getElementById('err-overlay');
-      var m = document.getElementById('err-msg');
-      if (o && m) { m.textContent = 'Unhandled Promise Rejection:\n' + (e.reason && e.reason.stack || e.reason || e); o.style.display = 'block'; }
-    });
-  </script>
-
-  <!-- ===== GIT TOOLS MODAL ===== -->
-  <div class="modal fade" id="gitToolsModal" tabindex="-1" aria-labelledby="gitToolsModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="gitToolsModalLabel">
-            <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-
-          <!-- Task selector -->
-          <div class="mb-3">
-            <label for="git-task-select" class="form-label small fw-semibold">Tarefa</label>
-            <select class="form-select form-select-sm" id="git-task-select">
-              <option value="">— Selecionar tarefa —</option>
-            </select>
-          </div>
-
-          <!-- Tabs: Branch | PR | Commit -->
-          <ul class="nav nav-tabs mb-3 small" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-branch-pane" type="button" role="tab">
-                <i class="bi bi-diagram-2 me-1"></i>Branch
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-pr-pane" type="button" role="tab">
-                <i class="bi bi-file-diff me-1"></i>Pull Request
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#gt-commit-pane" type="button" role="tab">
-                <i class="bi bi-arrow-up-square me-1"></i>Commit
-              </button>
-            </li>
-          </ul>
-
-          <div class="tab-content">
-
-            <!-- Branch tab -->
-            <div class="tab-pane fade show active" id="gt-branch-pane" role="tabpanel">
-              <p class="text-muted small">Nome de branch sugerido com base na tarefa selecionada.</p>
-              <div class="input-group mb-2">
-                <span class="input-group-text font-monospace text-muted small" style="font-size:.75rem">git checkout -b</span>
-                <input type="text" class="form-control font-monospace" id="git-branch-output" readonly placeholder="Seleciona uma tarefa acima…" />
-                <button class="btn btn-outline-secondary btn-sm" id="btn-copy-branch" type="button" title="Copiar">
-                  <i class="bi bi-clipboard" aria-hidden="true"></i>
-                </button>
-              </div>
-              <small id="git-branch-feedback" class="text-success d-none">✓ Copiado!</small>
-            </div>
-
-            <!-- PR tab -->
-            <div class="tab-pane fade" id="gt-pr-pane" role="tabpanel">
-              <p class="text-muted small">Template de Pull Request gerado a partir da descrição da tarefa.</p>
-              <textarea class="form-control font-monospace" id="git-pr-output" rows="14"
-                placeholder="Seleciona uma tarefa acima…" style="font-size:.78rem; resize: vertical;"></textarea>
-              <div class="d-flex align-items-center gap-2 mt-2">
-                <button class="btn btn-primary btn-sm" id="btn-copy-pr" type="button">
-                  <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copiar PR
-                </button>
-                <small id="git-pr-feedback" class="text-success d-none">✓ Copiado!</small>
-              </div>
-            </div>
-
-            <!-- Commit tab -->
-            <div class="tab-pane fade" id="gt-commit-pane" role="tabpanel">
-              <p class="text-muted small">Cola uma mensagem de commit para detetar a tarefa relacionada e sugerir uma atualização de estado.</p>
-              <div class="mb-3">
-                <label for="git-commit-input" class="form-label small">Mensagem de commit</label>
-                <input type="text" class="form-control font-monospace" id="git-commit-input"
-                  placeholder="fix: closes #42 corrigido bug de login" />
-                <div class="form-text">Suporta os formatos: <code>fix: #id</code>, <code>closes #id</code>, <code>feat: #id</code></div>
-              </div>
-              <button class="btn btn-outline-primary btn-sm mb-3" id="btn-parse-commit" type="button">
-                <i class="bi bi-search me-1" aria-hidden="true"></i>Analisar commit
-              </button>
-              <div id="git-commit-result" class="small"></div>
-              <button class="btn btn-success btn-sm mt-2" id="btn-apply-commit-status" type="button" hidden>
-                <i class="bi bi-check2 me-1" aria-hidden="true"></i>Aplicar estado
-              </button>
-            </div>
-
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== DEEP WORK — SELECTOR MODAL ===== -->
-  <div class="modal fade" id="deepWorkModal" tabindex="-1" aria-labelledby="deepWorkModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="deepWorkModalLabel">
-            <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small">Seleciona a tarefa em que vais focar. O ambiente entra em modo imersivo.</p>
-          <select class="form-select form-select-sm" id="dw-task-select">
-            <option value="">— Selecionar tarefa —</option>
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-info btn-sm text-dark" id="btn-deep-work-enter">
-            <i class="bi bi-lightning-fill me-1" aria-hidden="true"></i>Entrar em foco
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== DEEP WORK — FULLSCREEN OVERLAY ===== -->
-  <div id="deep-work-overlay" class="deep-work-overlay" hidden aria-modal="true" role="dialog" aria-label="Modo Foco">
-    <div class="deep-work-content">
-
-      <div class="deep-work-header">
-        <span class="badge bg-info text-dark">
-          <i class="bi bi-lightning-fill me-1"></i>Modo Foco Ativo
-        </span>
-        <button id="btn-deep-work-exit" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Sair
-        </button>
-      </div>
-
-      <div class="deep-work-task">
-        <div class="text-muted small mb-1">A trabalhar em</div>
-        <h2 id="dw-task-title" class="deep-work-title"></h2>
-        <p id="dw-task-desc" class="deep-work-desc text-muted"></p>
-      </div>
-
-      <div class="deep-work-timer">
-        <div class="dw-timer-label text-muted small">Tempo de foco</div>
-        <div id="dw-elapsed" class="dw-timer-value">00:00</div>
-      </div>
-
-      <div class="deep-work-snapshot">
-        <label for="dw-snapshot-notes" class="form-label small text-muted">
-          Notas de contexto <small>(o que estás a fazer, onde estás)</small>
-        </label>
-        <textarea id="dw-snapshot-notes" class="form-control form-control-sm" rows="3"
-          placeholder="Ex: A debugar o erro de cors no endpoint /auth. Linha 42 do auth.js. Testei com token inválido…"></textarea>
-        <div class="d-flex gap-2 mt-2 align-items-center">
-          <button id="btn-capture-snapshot" class="btn btn-warning btn-sm text-dark">
-            <i class="bi bi-camera-fill me-1" aria-hidden="true"></i>Capturar Snapshot
-          </button>
-          <small id="dw-snapshot-feedback" class="text-success d-none"></small>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ===== SNAPSHOT / CONTEXT RESTORE MODAL ===== -->
-  <div class="modal fade" id="snapshotModal" tabindex="-1" aria-labelledby="snapshotModalLabel">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="snapshotModalLabel">
-            <i class="bi bi-arrow-counterclockwise me-2 text-warning" aria-hidden="true"></i>Retomar Contexto
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small mb-3">Aqui está o contexto que guardaste antes de seres interrompido.</p>
-          <div id="snapshot-content"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== POST-MORTEM MODAL ===== -->
-  <div class="modal fade" id="postMortemModal" tabindex="-1" aria-labelledby="postMortemModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="postMortemModalLabel">
-            <i class="bi bi-file-earmark-text me-2 text-success" aria-hidden="true"></i>Post-mortem / Documentação
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small mb-3">
-            Gera automaticamente um resumo técnico de uma tarefa concluída para a tua wiki ou documentação.
-          </p>
-          <div class="mb-3">
-            <label for="pm-task-select" class="form-label small fw-semibold">Tarefa concluída</label>
-            <select class="form-select form-select-sm" id="pm-task-select">
-              <option value="">— Selecionar tarefa —</option>
-            </select>
-          </div>
-          <div>
-            <label for="pm-output" class="form-label small fw-semibold">Post-mortem gerado (Markdown)</label>
-            <textarea class="form-control font-monospace" id="pm-output" rows="18"
-              placeholder="Seleciona uma tarefa concluída acima para gerar o post-mortem…"
-              style="font-size:.78rem; resize: vertical;"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-          <button type="button" class="btn btn-success btn-sm" id="btn-copy-postmortem">
-            <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Copiar Markdown
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== TECH DEBT MODAL ===== -->
-  <div class="modal fade" id="techDebtModal" tabindex="-1" aria-labelledby="techDebtModalLabel">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="techDebtModalLabel">
-            <i class="bi bi-bug-fill me-2 text-danger" aria-hidden="true"></i>Débito Técnico
-          </h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-
-          <!-- Quick add -->
-          <div class="border border-secondary-subtle rounded p-3 mb-3">
-            <h6 class="small fw-semibold mb-3"><i class="bi bi-plus-circle me-1"></i>Registar débito técnico</h6>
-            <div id="debt-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
-            <div class="row g-2 mb-2">
-              <div class="col-8">
-                <label for="debt-title" class="form-label small">Título</label>
-                <input type="text" class="form-control form-control-sm" id="debt-title"
-                  placeholder="Ex: Remover dependência legada do lodash" />
-              </div>
-              <div class="col-4">
-                <label for="debt-type" class="form-label small">Tipo</label>
-                <select class="form-select form-select-sm" id="debt-type">
-                  <option value="refactoring">Refactoring</option>
-                  <option value="TODO">TODO</option>
-                  <option value="FIXME">FIXME</option>
-                  <option value="upgrade">Upgrade de lib</option>
-                  <option value="tests">Testes em falta</option>
-                  <option value="docs">Documentação</option>
-                </select>
-              </div>
-            </div>
-            <button type="button" class="btn btn-sm btn-danger" id="btn-add-debt">
-              <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Adicionar
-            </button>
-          </div>
-
-          <!-- Debt list -->
-          <div id="debt-list">
-            <p class="text-muted small text-center py-3">Nenhum débito registado.</p>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== ORG USERS MODAL ===== -->
-  <div class="modal fade" id="orgUsersModal" tabindex="-1" aria-labelledby="orgUsersModalLabel" aria-modal="true" role="dialog">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="orgUsersModalLabel">
-            <i class="bi bi-people-fill me-2 text-info"></i>Gerir Utilizadores da Organização
-          </h2>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-
-        <div class="modal-body">
-
-          <!-- Alerts -->
-          <div id="org-users-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
-          <div id="org-form-success" class="alert alert-success small py-2 d-none" role="status"></div>
-
-          <!-- Member list -->
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <h6 class="mb-0 fw-semibold">
-              Membros <span class="badge bg-secondary ms-1" id="org-user-count">—</span>
-            </h6>
-          </div>
-          <div id="org-user-list" class="org-user-list mb-4">
-            <p class="text-muted small text-center py-3">A carregar…</p>
-          </div>
-
-          <hr class="my-3" />
-
-          <!-- Create new member form -->
-          <h6 class="fw-semibold mb-3"><i class="bi bi-person-plus-fill me-2 text-success"></i>Adicionar novo membro</h6>
-
-          <div id="org-form-error" class="alert alert-danger small py-2 d-none" role="alert"></div>
-
-          <form id="org-create-user-form" novalidate>
-            <div class="row g-3">
-
-              <div class="col-12 col-md-6">
-                <label for="org-new-name" class="form-label">Nome completo <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                  <input type="text" class="form-control" id="org-new-name"
-                    placeholder="João Silva" required autocomplete="off" />
-                </div>
-              </div>
-
-              <div class="col-12 col-md-6">
-                <label for="org-new-email" class="form-label">Email de trabalho <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-                  <input type="email" class="form-control" id="org-new-email"
-                    placeholder="joao@empresa.com" required autocomplete="off" />
-                </div>
-              </div>
-
-              <div class="col-12 col-md-6">
-                <label for="org-new-password" class="form-label">Palavra-passe temporária <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                  <input type="password" class="form-control" id="org-new-password"
-                    placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password" />
-                  <button type="button" class="btn btn-outline-secondary" id="org-btn-toggle-pw" tabindex="-1" aria-label="Mostrar/ocultar">
-                    <i class="bi bi-eye" id="org-pw-eye"></i>
-                  </button>
-                </div>
-                <div class="form-text">O utilizador deverá alterar a palavra-passe após o primeiro acesso.</div>
-              </div>
-
-              <div class="col-12 col-md-6">
-                <label for="org-new-role" class="form-label">Função</label>
-                <select class="form-select" id="org-new-role">
-                  <option value="member" selected>Membro</option>
-                  <option value="admin">Administrador</option>
-                </select>
-                <div class="form-text">Admins podem gerir utilizadores e configurações da organização.</div>
-              </div>
-
-            </div>
-
-            <div class="d-flex justify-content-end mt-3">
-              <button type="submit" class="btn btn-success" id="org-btn-create-user">
-                <i class="bi bi-person-plus-fill me-2"></i>Criar utilizador
-              </button>
-            </div>
-          </form>
-
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
-        </div>
-
-      </div>
+      <ul id="cmd-list" class="cmd-list" role="listbox"></ul>
     </div>
   </div>
 
   <!-- ===== SCRIPTS ===== -->
-  <!-- Bootstrap 5 -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- SortableJS -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- Chart.js -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- marked.js (Markdown parser) -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- highlight.js (syntax highlighting — full browser bundle with all languages) -->
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
-    crossorigin="anonymous"
-  ></script>
-
-  <!-- Web Component -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous"></script>
+  <script src="src/components/app-navbar.js" type="module"></script>
   <script src="src/components/task-card.js?v=5" type="module"></script>
-
-  <!-- App modules -->
   <script src="src/js/app.js?v=5" type="module"></script>
 </body>
 </html>

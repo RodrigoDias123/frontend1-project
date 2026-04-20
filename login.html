@@ -3,21 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dev Tasks — Inicia sessão para gerir as tuas tarefas no formato Kanban." />
   <meta name="theme-color" content="#0d1117" />
   <title>Entrar — Dev Tasks</title>
 
-  <!-- Redirect if already authenticated -->
+  <!-- No login needed — redirect to landing -->
   <script>
-    (function() {
-      if (location.search.includes('logout')) {
-        localStorage.removeItem('devtasks_user');
-        history.replaceState(null, '', 'login.html');
-        return;
-      }
-      var s = null;
-      try { s = JSON.parse(localStorage.getItem('devtasks_user')); } catch(e) {}
-      if (s) window.location.replace(s.organizationId ? 'app-enterprise.html' : 'app.html');
-    })();
+    window.location.replace('index.html');
   </script>
 
   <link rel="icon" href="favicon.ico" type="image/x-icon" />

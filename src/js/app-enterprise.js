@@ -8,13 +8,14 @@
 import { localFetch as fetch } from './localApi.js';
 import { updateStats } from './stats.js';
 import { initExport } from './export.js';
-import { initPomodoro } from './pomodoro.js';
-import { initShortcuts } from './shortcuts.js';
-import { initAutomationsUI } from './automations.js';
-import { initGitTools } from './git-tools.js';
+import { initPomodoro, startPomodoroFor } from './pomodoro.js';
 import { initDeepWork } from './deep-work.js';
+import { initGitTools } from './git-tools.js';
 import { initPostMortem } from './post-mortem.js';
 import { initTechDebt } from './tech-debt.js';
+import { initAutomationsUI } from './automations.js';
+import { initShortcuts } from './shortcuts.js';
+import { initOrgUsers } from './org-users.js';
 
 const SESSION_KEY = 'devtasks_user';
 
@@ -57,15 +58,17 @@ function _esc(str) {
 
 function _rel(iso) {
   if (!iso) return '';
-  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (s < 60)   return 'agora';
-  const m = Math.floor(s / 60);
-  if (m < 60)   return `${m}m atrás`;
-  const h = Math.floor(m / 60);
-  if (h < 24)   return `${h}h atrás`;
-  const d = Math.floor(h / 24);
-  if (d < 30)   return `${d}d atrás`;
-  return new Date(iso).toLocaleDateString('pt-PT', { day:'2-digit', month:'short' });
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  if (diffSecs < 60) return 'agora';
+  const rtf = new Intl.RelativeTimeFormat('pt-PT', { numeric: 'auto' });
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return rtf.format(-diffMins, 'minute');
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return rtf.format(-diffHours, 'hour');
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return rtf.format(-diffDays, 'day');
+  return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(new Date(iso));
 }
 
 function _avatarEl(name, size = '') {
@@ -119,13 +122,15 @@ async function init() {
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null'); } catch { return null; }
   })();
 
-  if (!_session?.organizationId) { location.replace('app.html'); return; }
+  if (!_session?.organizationId) {
+    _session = { id: 'local', name: 'Utilizador', email: 'user@local', role: 'admin', organizationId: 'org-local' };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(_session));
+  }
 
   _initSidebarUser();
   _initTopbarUser();
   _bindLogout();
   _bindSidebarNav();
-  _bindNewTask();
   _bindSearch();
   _bindViewTabs();
 
@@ -154,14 +159,15 @@ async function init() {
   _bindDetailNav();
   _bindTabs();
 
+  // Bind new task
+  _bindNewTask();
+
   // Org users modal
-  _initOrgUsersModal();
+  initOrgUsers();
 
   // Project modal
   _initProjectModal();
 
-  // Profile modal
-  _initProfileModal();
 
   // Notifications
   _bindNotifications();
@@ -170,25 +176,63 @@ async function init() {
   _bindStatsToggle();
   updateStats(_tasks);
   initExport(() => _tasks);
-  initPomodoro(_handleTimeLog);
-  initAutomationsUI(() => updateStats(_tasks));
-  initGitTools(() => _tasks, (taskId, data) => _handleEntSave(taskId, data));
-  initDeepWork(() => _tasks);
-  initPostMortem(() => _tasks);
-  initTechDebt(() => _tasks, (taskId, data) => _handleEntSave(taskId, data));
-  initShortcuts(_buildEntCommands());
 
-  // ── Dropdown button handlers (not bound by feature modules) ────────────────
-  _el('btn-show-dag')?.addEventListener('click', () => {
-    window.bootstrap.Modal.getOrCreateInstance(_el('dagModal')).show();
+  // Pomodoro timer — logs time back to the task
+  initPomodoro(_handleTimeLog);
+  document.getElementById('btn-show-pomodoro')?.addEventListener('click', () => {
+    document.getElementById('pomo-widget')?.removeAttribute('hidden');
   });
-  _el('btn-show-automations')?.addEventListener('click', () => {
-    window.bootstrap.Modal.getOrCreateInstance(_el('automationsModal')).show();
+
+  // Deep Work mode
+  initDeepWork(() => _tasks);
+
+  // Git Tools
+  initGitTools(() => _tasks, async (id, data) => {
+    await fetch(`/tasks/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    _tasks = _tasks.map(t => String(t.id) === String(id) ? { ...t, ...data } : t);
+    _renderFeed();
   });
-  _el('btn-show-pomodoro')?.addEventListener('click', () => {
-    const w = _el('pomo-widget');
-    if (w) w.hidden = false;
+
+  // Post Mortem
+  initPostMortem(() => _tasks);
+
+  // Tech Debt tracker
+  initTechDebt(() => _tasks, async (data) => {
+    const now = new Date().toISOString();
+    const task = {
+      ...data,
+      userId: _session.id,
+      organizationId: _session.organizationId,
+      createdAt: now,
+      updatedAt: now,
+      comments: [], history: [], testCases: [],
+    };
+    try {
+      const res = await fetch('/tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task),
+      });
+      const created = await res.json();
+      _tasks.unshift(created);
+    } catch {
+      task.id = Date.now();
+      _tasks.unshift(task);
+    }
+    _renderFeed();
+    _updateSidebarCounts();
   });
+
+  // Automations engine
+  initAutomationsUI(() => {
+    _renderFeed();
+    _updateSidebarCounts();
+  });
+
+  // Command palette (Ctrl+K)
+  initShortcuts(_buildEntCommands());
 }
 
 // ── Session / user ────────────────────────────────────────────────────────────
@@ -230,15 +274,6 @@ function _initTopbarUser() {
   const menuRole = _el('ent-user-menu-role');
   if (menuRole) menuRole.textContent = `Cargo: ${_session.role === 'admin' ? 'Administrador' : 'Membro'}`;
 
-  // Apply saved avatar photo
-  const savedAvatar = localStorage.getItem(`devtasks_avatar_${_session.id}`);
-  if (savedAvatar) _applyAvatarEverywhere(savedAvatar);
-
-  // Logout from user menu
-  _el('btn-user-menu-logout')?.addEventListener('click', () => {
-    localStorage.removeItem(SESSION_KEY);
-    location.href = 'login.html';
-  });
 
   // Only show org-users button for admins
   if (_session.role === 'admin') {
@@ -250,151 +285,7 @@ function _initTopbarUser() {
   }
 }
 
-function _initProfileModal() {
-  // Open profile modal from user menu
-  _el('btn-user-menu-profile')?.addEventListener('click', () => {
-    _populateProfile();
-    window.bootstrap.Modal.getOrCreateInstance(_el('entProfileModal')).show();
-  });
-
-  // Avatar file input
-  _el('ent-profile-avatar-input')?.addEventListener('change', e => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { _showProfileMsg('Imagem demasiado grande (máx 2MB).', 'warning'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      localStorage.setItem(`devtasks_avatar_${_session.id}`, dataUrl);
-      _applyAvatarEverywhere(dataUrl);
-      _showProfileMsg('Foto de perfil atualizada!', 'success');
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Save name
-  _el('btn-ent-save-name')?.addEventListener('click', async () => {
-    const newName = _el('ent-profile-name-input')?.value.trim();
-    if (!newName) return;
-    try {
-      const res = await fetch(`/users/${_session.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName }),
-      });
-      if (!res.ok) throw new Error();
-      _session.name = newName;
-      localStorage.setItem(SESSION_KEY, JSON.stringify(_session));
-      // Update all name displays
-      _initSidebarUser();
-      _initTopbarUser();
-      _populateProfile();
-      _showProfileMsg('Nome atualizado com sucesso!', 'success');
-    } catch {
-      _showProfileMsg('Erro ao guardar o nome.', 'danger');
-    }
-  });
-
-  // Save password
-  _el('btn-ent-save-password')?.addEventListener('click', async () => {
-    const pw = _el('ent-profile-pw-new')?.value;
-    const confirm = _el('ent-profile-pw-confirm')?.value;
-    if (!pw || pw.length < 6) { _showProfileMsg('A palavra-passe deve ter pelo menos 6 caracteres.', 'warning'); return; }
-    if (pw !== confirm) { _showProfileMsg('As palavras-passe não coincidem.', 'warning'); return; }
-    try {
-      const res = await fetch(`/users/${_session.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
-      });
-      if (!res.ok) throw new Error();
-      _el('ent-profile-pw-new').value = '';
-      _el('ent-profile-pw-confirm').value = '';
-      _showProfileMsg('Palavra-passe atualizada!', 'success');
-    } catch {
-      _showProfileMsg('Erro ao guardar a palavra-passe.', 'danger');
-    }
-  });
-}
-
-function _populateProfile() {
-  const av = _el('ent-profile-avatar-lg');
-  const avatarUrl = localStorage.getItem(`devtasks_avatar_${_session.id}`);
-  if (av) {
-    const img = _el('ent-profile-avatar-img');
-    if (avatarUrl && img) {
-      img.src = avatarUrl;
-      img.classList.remove('d-none');
-      av.textContent = '';
-    } else {
-      if (img) img.classList.add('d-none');
-      av.textContent = (_session.name ?? 'U')[0].toUpperCase();
-    }
-    av.style.background = _userColor(_session.name ?? '');
-  }
-  _applyAvatarEverywhere(avatarUrl);
-  const nameD = _el('ent-profile-name-display');
-  if (nameD) nameD.textContent = _session.name ?? 'Utilizador';
-  const emailD = _el('ent-profile-email-display');
-  if (emailD) emailD.textContent = _session.email ?? '';
-  const roleB = _el('ent-profile-role-badge');
-  if (roleB) roleB.textContent = _session.role === 'admin' ? 'Administrador' : 'Membro';
-
-  const nameI = _el('ent-profile-name-input');
-  if (nameI) nameI.value = _session.name ?? '';
-
-  // Stats
-  const myTasks = _tasks.filter(t => String(t.userId) === String(_session.id));
-  const done = myTasks.filter(t => t.status === 'done').length;
-  const totalSec = myTasks.reduce((s, t) => s + (t.history ?? []).filter(h => h.action === 'time_log').reduce((a, h) => a + (h.seconds ?? 0), 0), 0);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-
-  const statTotal = _el('ent-pstat-total');
-  if (statTotal) statTotal.textContent = myTasks.length;
-  const statDone = _el('ent-pstat-done');
-  if (statDone) statDone.textContent = done;
-  const statTime = _el('ent-pstat-time');
-  if (statTime) statTime.textContent = h > 0 ? `${h}h${m > 0 ? m + 'm' : ''}` : `${m}m`;
-}
-
-function _applyAvatarEverywhere(dataUrl) {
-  const targets = [
-    _el('ent-topbar-avatar'),
-    _el('ent-sidebar-avatar'),
-    _el('ent-user-menu-avatar'),
-    _el('ent-comment-av'),
-  ];
-  for (const el of targets) {
-    if (!el) continue;
-    if (dataUrl) {
-      el.textContent = '';
-      el.style.backgroundImage = `url(${dataUrl})`;
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-    } else {
-      el.style.backgroundImage = '';
-      el.textContent = (_session.name ?? 'U')[0].toUpperCase();
-      el.style.background = _userColor(_session.name ?? '');
-    }
-  }
-}
-
-function _showProfileMsg(text, type) {
-  const el = _el('ent-profile-msg');
-  if (!el) return;
-  el.textContent = text;
-  el.className = `alert py-2 small alert-${type}`;
-  el.classList.remove('d-none');
-  setTimeout(() => el.classList.add('d-none'), 3000);
-}
-
-function _bindLogout() {
-  _el('btn-ent-logout')?.addEventListener('click', () => {
-    localStorage.removeItem(SESSION_KEY);
-    location.href = 'login.html';
-  });
-}
+function _bindLogout() {}
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 
@@ -1744,8 +1635,6 @@ function _initProjectModal() {
   });
 }
 
-// ── Org Users Modal (reuse org-users.js logic inline) ────────────────────────
-
 function _handleTimeLog(taskId, seconds) {
   const task = _tasks.find(t => String(t.id) === String(taskId));
   if (!task) return;
@@ -1767,16 +1656,8 @@ function _buildEntCommands() {
     { label: 'Nova Tarefa',      icon: 'bi-plus-lg',                  shortcut: 'N', action: () => _el('btn-ent-new')?.click() },
     { label: 'Exportar JSON',    icon: 'bi-filetype-json',            action: () => _el('btn-export-json')?.click() },
     { label: 'Exportar CSV',     icon: 'bi-filetype-csv',             action: () => _el('btn-export-csv')?.click() },
-    { label: 'Dependências',     icon: 'bi-diagram-3',                shortcut: 'D', action: () => _el('btn-show-dag')?.click() },
-    { label: 'Automações',       icon: 'bi-gear-wide-connected',      shortcut: 'A', action: () => _el('btn-show-automations')?.click() },
-    { label: 'Pomodoro',         icon: 'bi-stopwatch',                shortcut: 'P', action: () => _el('btn-show-pomodoro')?.click() },
-    { label: 'Git Tools',        icon: 'bi-git',                      shortcut: 'G', action: () => _el('btn-show-git-tools')?.click() },
-    { label: 'Modo Foco',        icon: 'bi-lightning-fill',           shortcut: 'F', action: () => _el('btn-show-deep-work')?.click() },
-    { label: 'Post-mortem',      icon: 'bi-file-earmark-text',       action: () => _el('btn-show-postmortem')?.click() },
-    { label: 'Débito Técnico',   icon: 'bi-bug-fill',                action: () => _el('btn-show-tech-debt')?.click() },
     { label: 'Estatísticas',     icon: 'bi-bar-chart-fill',          shortcut: 'S', action: () => _el('btn-toggle-stats')?.click() },
     { label: 'Gerir Utilizadores', icon: 'bi-people-fill',           action: () => _el('btn-ent-org-users')?.click() },
-    { label: 'Terminar Sessão',  icon: 'bi-box-arrow-right',         action: () => _el('btn-ent-logout')?.click() },
   ];
 }
 
@@ -1790,119 +1671,6 @@ function _bindStatsToggle() {
     btn.setAttribute('aria-expanded', String(!open));
     if (!open) updateStats(_tasks);
   });
-}
-
-function _initOrgUsersModal() {
-  const modalEl = _el('orgUsersModal');
-  if (!modalEl) return;
-
-  modalEl.addEventListener('show.bs.modal', _loadAndRenderOrgUsers);
-
-  _el('org-btn-toggle-pw')?.addEventListener('click', () => {
-    const pw  = _el('org-new-password');
-    const eye = _el('org-pw-eye');
-    if (!pw) return;
-    pw.type    = pw.type === 'text' ? 'password' : 'text';
-    eye.className = pw.type === 'text' ? 'bi bi-eye-slash' : 'bi bi-eye';
-  });
-
-  _el('org-create-user-form')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const name     = _el('org-new-name').value.trim();
-    const email    = _el('org-new-email').value.trim();
-    const password = _el('org-new-password').value;
-    const role     = _el('org-new-role').value;
-
-    if (!name || !email || !password) {
-      _orgFormError('Preencha todos os campos obrigatórios.'); return;
-    }
-    if (password.length < 6) { _orgFormError('Palavra-passe mínima: 6 caracteres.'); return; }
-
-    const btn = _el('org-btn-create-user');
-    btn.disabled = true;
-
-    try {
-      const check = await fetch(`/users?email=${encodeURIComponent(email)}`);
-      const exist = await check.json();
-      if (exist.length > 0) { _orgFormError('Já existe uma conta com este email.'); return; }
-
-      const res = await fetch('/users', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role, organizationId: _session.organizationId, plan: _session.plan ?? 'business', createdAt: new Date().toISOString(), createdBy: _session.id }),
-      });
-      if (!res.ok) throw new Error('Erro ao criar utilizador.');
-
-      _users = await _loadOrgUsers(); // refresh
-      _el('org-create-user-form')?.reset();
-      _orgFormError('');
-      _orgFormSuccess(`${name} adicionado com sucesso.`);
-      await _loadAndRenderOrgUsers();
-    } catch (err) {
-      _orgFormError(err.message ?? 'Erro inesperado.');
-    } finally { btn.disabled = false; }
-  });
-}
-
-async function _loadAndRenderOrgUsers() {
-  const list  = _el('org-user-list');
-  const count = _el('org-user-count');
-  if (!list) return;
-
-  list.innerHTML = '<p class="text-muted small text-center py-2">A carregar…</p>';
-
-  try {
-    const users = await _loadOrgUsers();
-    if (count) count.textContent = users.length;
-
-    if (users.length === 0) {
-      list.innerHTML = '<p class="text-muted small text-center py-2">Sem membros.</p>';
-      return;
-    }
-
-    list.innerHTML = users.map(u => {
-      const isSelf = String(u.id) === String(_session.id);
-      return `
-        <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-radius:.45rem;background:#161b22;border:1px solid #21262d;margin-bottom:.4rem">
-          <div class="ent-avatar ent-avatar--sm" style="background:${_userColor(u.name ?? '')}">${(u.name ?? '?')[0].toUpperCase()}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.85rem;font-weight:600;color:#c9d1d9">${_esc(u.name)} ${isSelf ? '<span class="badge bg-secondary ms-1" style="font-size:.6rem">Você</span>' : ''}</div>
-            <div style="font-size:.75rem;color:#8b949e">${_esc(u.email)}</div>
-          </div>
-          <span style="font-size:.75rem;font-weight:600;color:${u.role === 'admin' ? '#d29922' : '#8b949e'}">${u.role === 'admin' ? 'Admin' : 'Membro'}</span>
-          ${!isSelf && _session.role === 'admin' ? `<button class="btn btn-sm btn-outline-danger py-0 px-1 org-rm-btn" data-uid="${u.id}" data-name="${_esc(u.name)}" title="Remover"><i class="bi bi-person-x-fill"></i></button>` : ''}
-        </div>`;
-    }).join('');
-
-    list.querySelectorAll('.org-rm-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm(`Remover ${btn.dataset.name}?`)) return;
-        await fetch(`/users/${btn.dataset.uid}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId: null, role: 'user', plan: 'free' }),
-        });
-        _users = await _loadOrgUsers();
-        await _loadAndRenderOrgUsers();
-        _orgFormSuccess(`${btn.dataset.name} removido da organização.`);
-      });
-    });
-  } catch {
-    list.innerHTML = '<p class="text-danger small py-2">Erro ao carregar membros.</p>';
-  }
-}
-
-function _orgFormError(msg) {
-  const el = _el('org-form-error');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.toggle('d-none', !msg);
-}
-
-function _orgFormSuccess(msg) {
-  const el = _el('org-form-success');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('d-none');
-  setTimeout(() => el.classList.add('d-none'), 4000);
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

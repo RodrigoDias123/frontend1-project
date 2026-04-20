@@ -460,9 +460,16 @@ body.ent-app .text-muted {
   padding: 0 4px;
 }
 .ent-notif-panel {
+  width: 340px;
+  max-height: 420px;
+  overflow: hidden;
   background: #161b22 !important;
   border: 1px solid #30363d !important;
   padding: 0 !important;
+  flex-direction: column;
+}
+.ent-notif-panel.show {
+  display: flex !important;
 }
 .ent-notif-item {
   display: flex;

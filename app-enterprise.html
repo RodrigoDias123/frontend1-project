@@ -3,46 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dev Tasks Enterprise — Gestão de projetos para equipas. Kanban, calendário, estatísticas e gestão de utilizadores." />
   <meta name="theme-color" content="#0d1117" />
   <title>Dev Tasks — Enterprise</title>
-
-  <!-- Auth guard: must be enterprise user -->
-  <script>
-    (function () {
-      var s = null;
-      try { s = JSON.parse(localStorage.getItem('devtasks_user') || 'null'); } catch {}
-      if (!s) { location.replace('login.html'); }
-      else if (!s.organizationId) { location.replace('app.html'); }
-    })();
-  </script>
 
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="src/css/enterprise-app.css" />
   <link rel="stylesheet" href="src/css/features.css" />
-
-  <!-- highlight.js (syntax highlighting inside markdown) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" />
 </head>
 
 <body class="ent-app">
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       SIDEBAR
-  ═══════════════════════════════════════════════════════════════════════════ -->
+  <!-- ===== SIDEBAR ===== -->
   <aside class="ent-sidebar" aria-label="Navegação lateral">
 
-    <!-- Org name -->
     <div class="ent-sidebar-header">
-      <div class="ent-org-name">
+      <a href="index.html" class="ent-org-name text-decoration-none" style="color:inherit">
         <i class="bi bi-kanban-fill" style="color:#3b82f6"></i>
         <span id="ent-org-name">Organização</span>
-        <i class="bi bi-chevron-down" style="font-size:.7rem;color:#999;margin-left:auto"></i>
-      </div>
+      </a>
     </div>
 
-    <!-- Navigation -->
     <nav class="ent-nav" aria-label="Filtros principais">
       <ul>
         <li>
@@ -97,7 +81,7 @@
       </ul>
     </nav>
 
-    <!-- Filters section -->
+    <!-- Filters -->
     <div class="ent-sidebar-section">
       <div class="ent-sidebar-section-header">
         Filtros
@@ -121,7 +105,7 @@
       </ul>
     </div>
 
-    <!-- Labels section -->
+    <!-- Labels -->
     <div class="ent-sidebar-section">
       <div class="ent-sidebar-section-header">
         Labels
@@ -132,7 +116,7 @@
       </ul>
     </div>
 
-    <!-- Projects section -->
+    <!-- Projects -->
     <div class="ent-sidebar-section">
       <div class="ent-sidebar-section-header">
         Projectos
@@ -143,7 +127,7 @@
       </ul>
     </div>
 
-    <!-- Footer: user + logout -->
+    <!-- Footer: user -->
     <div class="ent-sidebar-footer">
       <div class="ent-sidebar-footer-user">
         <div class="ent-avatar ent-avatar--sm" id="ent-sidebar-avatar" aria-hidden="true"></div>
@@ -152,15 +136,13 @@
           <div class="ent-sidebar-footer-role" id="ent-sidebar-role"></div>
         </div>
       </div>
-      <button class="ent-icon-btn" id="btn-ent-logout" title="Terminar sessão" aria-label="Terminar sessão">
+      <a href="index.html" class="ent-icon-btn" title="Voltar à página inicial" aria-label="Voltar à página inicial">
         <i class="bi bi-box-arrow-right" style="color:#bbb"></i>
-      </button>
+      </a>
     </div>
   </aside>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       MAIN AREA
-  ═══════════════════════════════════════════════════════════════════════════ -->
+  <!-- ===== MAIN AREA ===== -->
   <div class="ent-main">
 
     <!-- Top bar -->
@@ -194,7 +176,6 @@
             <li><hr class="dropdown-divider" /></li>
           </ul>
         </div>
-        <!-- Back from analytics -->
         <button class="ent-back-btn d-none" id="btn-back-from-analytics" aria-label="Voltar" title="Voltar">
           <i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar
         </button>
@@ -208,16 +189,15 @@
           data-bs-toggle="modal" data-bs-target="#orgUsersModal" aria-label="Gerir utilizadores">
           <i class="bi bi-people-fill"></i>
         </button>
-        <button class="ent-icon-btn" id="btn-toggle-stats" title="Estatísticas (S)" aria-label="Estatísticas">
+        <button class="ent-icon-btn" id="btn-toggle-stats" title="Estatísticas" aria-label="Estatísticas">
           <i class="bi bi-bar-chart-fill"></i>
         </button>
-        <!-- More actions dropdown -->
+        <!-- Export + Tools dropdown -->
         <div class="dropdown">
-          <button class="ent-icon-btn" type="button" data-bs-toggle="dropdown" aria-label="Mais ações" title="Mais ações">
-            <i class="bi bi-three-dots"></i>
+          <button class="ent-icon-btn" type="button" data-bs-toggle="dropdown" aria-label="Exportar e Ferramentas" title="Exportar e Ferramentas">
+            <i class="bi bi-download"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><h6 class="dropdown-header small">Exportar</h6></li>
             <li>
               <button class="dropdown-item small" id="btn-export-json">
                 <i class="bi bi-filetype-json me-2 text-warning" aria-hidden="true"></i>Exportar JSON
@@ -231,30 +211,25 @@
             <li><hr class="dropdown-divider" /></li>
             <li><h6 class="dropdown-header small">Ferramentas</h6></li>
             <li>
-              <button class="dropdown-item small" id="btn-show-dag">
-                <i class="bi bi-diagram-3 me-2 text-info" aria-hidden="true"></i>Dependências (D)
-              </button>
-            </li>
-            <li>
               <button class="dropdown-item small" id="btn-show-automations">
-                <i class="bi bi-gear-wide-connected me-2 text-secondary" aria-hidden="true"></i>Automações (A)
+                <i class="bi bi-gear-wide-connected me-2 text-secondary" aria-hidden="true"></i>Automações
               </button>
             </li>
             <li>
               <button class="dropdown-item small" id="btn-show-pomodoro">
-                <i class="bi bi-stopwatch me-2 text-danger" aria-hidden="true"></i>Pomodoro (P)
+                <i class="bi bi-stopwatch me-2 text-danger" aria-hidden="true"></i>Pomodoro
               </button>
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li><h6 class="dropdown-header small">Dev Tools</h6></li>
             <li>
               <button class="dropdown-item small" id="btn-show-git-tools">
-                <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools (G)
+                <i class="bi bi-git me-2 text-warning" aria-hidden="true"></i>Git Tools
               </button>
             </li>
             <li>
               <button class="dropdown-item small" id="btn-show-deep-work">
-                <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco (F)
+                <i class="bi bi-lightning-fill me-2 text-info" aria-hidden="true"></i>Modo Foco
               </button>
             </li>
             <li>
@@ -267,20 +242,15 @@
                 <i class="bi bi-bug-fill me-2 text-danger" aria-hidden="true"></i>Débito Técnico
               </button>
             </li>
-            <li>
-              <button class="dropdown-item small d-none" id="btn-view-snapshot">
-                <i class="bi bi-arrow-counterclockwise me-2 text-warning" aria-hidden="true"></i>Retomar contexto
-                <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">!</span>
-              </button>
-            </li>
           </ul>
         </div>
+        <!-- Notifications -->
         <div class="dropdown">
           <button class="ent-icon-btn position-relative" id="btn-ent-notifications" title="Notificações" aria-label="Notificações" data-bs-toggle="dropdown" data-bs-auto-close="outside">
             <i class="bi bi-bell"></i>
             <span class="ent-notif-badge d-none" id="ent-notif-badge"></span>
           </button>
-          <div class="dropdown-menu dropdown-menu-end ent-notif-panel" id="ent-notif-panel" style="width:340px;max-height:420px;overflow:hidden;display:flex;flex-direction:column">
+          <div class="dropdown-menu dropdown-menu-end ent-notif-panel" id="ent-notif-panel">
             <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom" style="border-color:#21262d!important">
               <span class="fw-semibold small">Notificações</span>
               <button class="btn btn-sm btn-link text-muted p-0" id="btn-clear-notifications" style="font-size:.75rem;text-decoration:none">Limpar tudo</button>
@@ -288,6 +258,7 @@
             <div id="ent-notif-list" style="overflow-y:auto;flex:1"></div>
           </div>
         </div>
+        <!-- User menu -->
         <div class="dropdown">
           <div class="ent-avatar" id="ent-topbar-avatar" title="O meu perfil"
             style="cursor:pointer" data-bs-toggle="dropdown" aria-expanded="false" role="button"></div>
@@ -310,42 +281,35 @@
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <button class="dropdown-item small" id="btn-user-menu-profile">
-                <i class="bi bi-pencil-square me-2"></i>Editar perfil
-              </button>
-            </li>
-            <li>
-              <button class="dropdown-item small text-danger" id="btn-user-menu-logout">
-                <i class="bi bi-box-arrow-right me-2"></i>Terminar sessão
-              </button>
+              <a href="index.html" class="dropdown-item small text-danger">
+                <i class="bi bi-box-arrow-right me-2"></i>Sair
+              </a>
             </li>
           </ul>
         </div>
       </div>
     </header>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════
-         STATS PANEL (Analytics view)
-    ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- ===== STATS PANEL ===== -->
     <section id="stats-panel" class="stats-panel" aria-label="Painel de estatísticas" hidden>
       <div class="container-fluid px-4 py-3">
         <div class="row g-3 align-items-center">
           <div class="col-12 col-lg-5">
             <div class="row g-2">
               <div class="col-4">
-                <div class="stat-card stat-card--todo" role="status" aria-label="Total de tarefas a fazer">
+                <div class="stat-card stat-card--todo" role="status">
                   <span class="stat-card__count" id="count-todo">0</span>
                   <span class="stat-card__label">To Do</span>
                 </div>
               </div>
               <div class="col-4">
-                <div class="stat-card stat-card--doing" role="status" aria-label="Total de tarefas em progresso">
+                <div class="stat-card stat-card--doing" role="status">
                   <span class="stat-card__count" id="count-doing">0</span>
                   <span class="stat-card__label">Doing</span>
                 </div>
               </div>
               <div class="col-4">
-                <div class="stat-card stat-card--done" role="status" aria-label="Total de tarefas concluídas">
+                <div class="stat-card stat-card--done" role="status">
                   <span class="stat-card__count" id="count-done">0</span>
                   <span class="stat-card__label">Done</span>
                 </div>
@@ -354,17 +318,17 @@
           </div>
           <div class="col-12 col-lg-7">
             <div class="chart-wrapper">
-              <canvas id="stats-chart" aria-label="Gráfico de estatísticas das tarefas" role="img"></canvas>
+              <canvas id="stats-chart" aria-label="Gráfico de estatísticas" role="img"></canvas>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Content: feed + detail -->
+    <!-- Content -->
     <div class="ent-content">
 
-      <!-- ── CALENDAR VIEW ── -->
+      <!-- Calendar View -->
       <section class="ent-calendar-view d-none" id="ent-calendar-view" aria-label="Vista de calendário">
         <div class="ent-cal-header">
           <button class="ent-icon-btn" id="btn-cal-prev" aria-label="Mês anterior">
@@ -384,7 +348,7 @@
         </div>
       </section>
 
-      <!-- ── FEED PANEL ── -->
+      <!-- Feed Panel -->
       <section class="ent-feed" aria-label="Feed de atividade">
         <div class="ent-feed-header">
           <span class="ent-feed-title" id="ent-feed-title">Notificações</span>
@@ -398,7 +362,7 @@
           </div>
         </div>
 
-        <!-- Quick create panel (hidden by default) -->
+        <!-- Quick create -->
         <div class="ent-new-task-panel d-none" id="ent-new-task-panel">
           <form id="ent-new-task-form" novalidate>
             <input type="text" id="ent-new-title" placeholder="Título da tarefa *" required autocomplete="off" />
@@ -422,29 +386,24 @@
               <button type="submit" class="btn btn-sm btn-primary">
                 <i class="bi bi-check me-1"></i>Criar
               </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary"
-                id="btn-cancel-new">Cancelar</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-cancel-new">Cancelar</button>
             </div>
           </form>
         </div>
 
-        <!-- Task list / activity feed -->
         <div id="ent-feed-list" class="ent-feed-list" role="list" aria-label="Tarefas"></div>
       </section>
 
-      <!-- ── DETAIL PANEL ── -->
+      <!-- Detail Panel -->
       <main class="ent-detail" id="ent-detail" aria-label="Detalhes da tarefa">
 
-        <!-- Empty state -->
         <div id="ent-detail-empty" class="ent-detail-empty">
           <i class="bi bi-layout-text-sidebar-reverse" aria-hidden="true"></i>
           <p>Selecione uma tarefa para ver os detalhes</p>
         </div>
 
-        <!-- Task detail (hidden until task selected) -->
         <div id="ent-detail-content" class="d-none" style="display:flex!important;flex-direction:column;flex:1;overflow:hidden">
 
-          <!-- Detail topbar -->
           <div class="ent-detail-topbar">
             <span class="ent-breadcrumb" id="ent-detail-breadcrumb" aria-label="Localização"></span>
             <div class="d-flex gap-1">
@@ -460,16 +419,13 @@
             </div>
           </div>
 
-          <!-- Scrollable content -->
           <div class="ent-detail-scroll">
 
-            <!-- Task ID + Title -->
             <div class="ent-detail-id-row">
               <span class="ent-detail-id" id="ent-detail-id"></span>
               <h2 class="ent-detail-title" id="ent-detail-title" contenteditable="false"></h2>
             </div>
 
-            <!-- Assignee + CC + Tags -->
             <div class="ent-detail-assignee-row">
               <div class="ent-avatar ent-avatar--sm" id="ent-detail-assignee-av" aria-hidden="true"></div>
               <span class="small fw-semibold" id="ent-detail-assignee-name"></span>
@@ -477,7 +433,6 @@
               <div id="ent-detail-tags" class="d-flex flex-wrap gap-1 ms-2"></div>
             </div>
 
-            <!-- Status + Change -->
             <div class="ent-detail-status-row">
               <div class="ent-status-btn" id="ent-detail-status" aria-live="polite"></div>
               <select class="form-select form-select-sm ent-status-select"
@@ -488,7 +443,6 @@
               </select>
             </div>
 
-            <!-- Time bar -->
             <div class="ent-time-section">
               <div class="ent-time-labels">
                 <span id="ent-detail-time-logged" title="Tempo registado">0h</span>
@@ -500,7 +454,6 @@
               <div class="ent-time-dates" id="ent-detail-dates"></div>
             </div>
 
-            <!-- Action buttons -->
             <div class="ent-detail-btn-row">
               <button class="btn btn-sm btn-outline-secondary" id="btn-ent-add-item">
                 <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Adicionar item
@@ -510,10 +463,8 @@
               </button>
             </div>
 
-            <!-- Description -->
             <p class="ent-detail-description" id="ent-detail-description"></p>
 
-            <!-- Tabs -->
             <div class="ent-tabs" role="tablist">
               <button class="ent-tab-btn ent-tab-btn--active" data-tab="comment"
                 role="tab" aria-selected="true">Comentário</button>
@@ -523,7 +474,6 @@
                 role="tab" aria-selected="false">Casos de Teste</button>
             </div>
 
-            <!-- Tab: Comments -->
             <div id="ent-tab-comment" role="tabpanel">
               <div id="ent-comment-list"></div>
               <form id="ent-comment-form" class="ent-comment-form">
@@ -536,26 +486,22 @@
               </form>
             </div>
 
-            <!-- Tab: History -->
             <div id="ent-tab-history" class="d-none" role="tabpanel">
               <div id="ent-history-list"></div>
             </div>
 
-            <!-- Tab: Test Cases -->
             <div id="ent-tab-testcases" class="d-none" role="tabpanel">
               <div id="ent-testcases-list"></div>
             </div>
 
-          </div><!-- /ent-detail-scroll -->
-        </div><!-- /ent-detail-content -->
+          </div>
+        </div>
       </main>
 
-    </div><!-- /ent-content -->
-  </div><!-- /ent-main -->
+    </div>
+  </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       COMMAND PALETTE
-  ═══════════════════════════════════════════════════════════════════════════ -->
+
   <div id="cmd-palette" class="cmd-palette-overlay" hidden
        role="dialog" aria-modal="true" aria-label="Paleta de comandos">
     <div class="cmd-palette-box">
@@ -1210,7 +1156,8 @@
     </div>
   </div>
 
-  <!-- Scripts -->
+
+  <!-- ===== SCRIPTS ===== -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>

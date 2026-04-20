@@ -73,11 +73,15 @@ class TaskCard extends HTMLElement {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const due   = new Date(dateStr + 'T00:00:00');
     const diffDays = Math.ceil((due - today) / 86_400_000);
-    const formatted = due.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
-    if (diffDays < 0)   return { text: `${formatted} · vencida`,      cls: 'due--overdue' };
-    if (diffDays === 0) return { text: `${formatted} · hoje`,          cls: 'due--soon' };
-    if (diffDays <= 3)  return { text: `${formatted} · ${diffDays}d`,  cls: 'due--soon' };
-    return                     { text: `${formatted} · ${diffDays}d`,  cls: '' };
+    const formatted = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }).format(due);
+    const rtf = new Intl.RelativeTimeFormat('pt-PT', { numeric: 'auto' });
+    const relLabel = Math.abs(diffDays) < 7
+      ? rtf.format(diffDays, 'day')
+      : rtf.format(Math.round(diffDays / 7), 'week');
+    if (diffDays < 0)   return { text: `${formatted} · ${relLabel}`, cls: 'due--overdue' };
+    if (diffDays === 0) return { text: `${formatted} · ${relLabel}`, cls: 'due--soon' };
+    if (diffDays <= 3)  return { text: `${formatted} · ${relLabel}`, cls: 'due--soon' };
+    return                     { text: `${formatted} · ${relLabel}`, cls: '' };
   }
 
   _fmtTime(secs) {
