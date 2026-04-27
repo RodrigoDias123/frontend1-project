@@ -139,16 +139,32 @@ async function _createTask(data) {
     saveCache(_tasks);
     addTaskCard(created);
     updateStats(_tasks);
-    _toast('Tarefa criada com sucesso!', 'success');
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Tarefa criada!',
+        text: `A tarefa "${created.title}" foi criada com sucesso.`,
+        timer: 1800,
+        showConfirmButton: false
+      });
+    }
   } catch (_) {
-    // Offline fallback — store locally with a temporary id
+    // Offline fallback — store locally com id temporário
     const offline = { ...payload, id: `offline-${Date.now()}` };
     _tasks.push(offline);
     saveCache(_tasks);
     addTaskCard(offline);
     updateStats(_tasks);
     addPendingOp({ type: 'create', data: offline });
-    _toast('Sem ligação — tarefa guardada localmente.', 'info');
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Sem ligação',
+        text: 'Tarefa guardada localmente.',
+        timer: 2200,
+        showConfirmButton: false
+      });
+    }
   }
 }
 

@@ -1010,16 +1010,54 @@ function _bindNewTask() {
       testCases:      [],
     };
 
+
+    let createdTask = null;
+
+    let erroAoCriar = false;
     try {
       const res     = await fetch('/tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(task),
       });
-      const created = await res.json();
-      _tasks.unshift(created);
+      createdTask = await res.json();
+      _tasks.unshift(createdTask);
     } catch {
+      erroAoCriar = true;
       task.id = Date.now();
       _tasks.unshift(task);
+      createdTask = task;
+    }
+
+    // SweetAlert2: alerta de sucesso ou erro
+    if (window.Swal) {
+      if (!erroAoCriar) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Tarefa criada!',
+          text: `A tarefa "${createdTask.title}" foi criada com sucesso.`,
+          timer: 1800,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro ao criar tarefa',
+          text: 'Não foi possível salvar no servidor. A tarefa foi criada localmente.',
+          timer: 2500,
+          showConfirmButton: false
+        });
+      }
+    }
+
+    // SweetAlert2: alerta de sucesso
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Tarefa criada!',
+        text: `A tarefa "${createdTask.title}" foi criada com sucesso.`,
+        timer: 1800,
+        showConfirmButton: false
+      });
     }
 
     _el('ent-new-task-panel')?.classList.add('d-none');
