@@ -59,12 +59,98 @@ async function init() {
     // 3. Load tasks (scoped to the current user)
     const _sessionUser = JSON.parse(localStorage.getItem('devtasks_user') ?? 'null');
     const _userId = _sessionUser?.id ?? null;
+
     try {
       _tasks = await getTasks(_userId);
       saveCache(_tasks);
     } catch (_) {
       _tasks = getCache();
       if (!navigator.onLine) _toast('Sem ligação — a trabalhar offline.', 'info');
+    }
+
+    // Adiciona tasks de exemplo apenas localmente, se não houver tasks reais
+    if (_tasks.length === 0) {
+      const exemplos = [
+        {
+          id: 'exemplo-todo',
+          title: 'Feature: Nova funcionalidade',
+          description: 'Implemente uma nova funcionalidade no sistema.',
+          priority: 'alta',
+          status: 'todo',
+          labels: ['feature'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        },
+        {
+          id: 'exemplo-todo2',
+          title: 'Onboarding: Primeiros passos',
+          description: 'Leia o guia rápido para começar a usar o Dev Tasks.',
+          priority: 'media',
+          status: 'todo',
+          labels: ['onboarding'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        },
+        {
+          id: 'exemplo-progress',
+          title: 'Bug: Corrigir erro de login',
+          description: 'Usuários não conseguem acessar com senha incorreta.',
+          priority: 'media',
+          status: 'progress',
+          labels: ['bug'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        },
+        {
+          id: 'exemplo-progress2',
+          title: 'Automação: Backup diário',
+          description: 'Verifique se o backup automático está funcionando.',
+          priority: 'baixa',
+          status: 'progress',
+          labels: ['automação'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        },
+        {
+          id: 'exemplo-done',
+          title: 'Melhoria: Atualizar documentação',
+          description: 'Documentação do projeto revisada e publicada.',
+          priority: 'baixa',
+          status: 'done',
+          labels: ['melhoria'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        },
+        {
+          id: 'exemplo-done2',
+          title: 'Release: Versão 1.0 publicada',
+          description: 'Primeira versão estável disponível para todos os usuários.',
+          priority: 'alta',
+          status: 'done',
+          labels: ['release'],
+          userId: _userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+        }
+      ];
+      _tasks = exemplos;
     }
 
     // 4. Initialise UI modules
