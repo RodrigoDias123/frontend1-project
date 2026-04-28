@@ -26,6 +26,7 @@ let _tasks    = [];
 let _users    = [];
 let _projects = [];
 let _orgName  = '';
+let _orgScopeId = null;
 let _filter   = 'all';
 let _activeId = null;
 let _activeTab = 'comment';
@@ -90,6 +91,35 @@ function _fmtHms(totalSeconds) {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
+function _readSession() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+function _redirectToLogin(reason = 'auth_required') {
+  const url = new URL('login.html', window.location.href);
+  if (reason) url.searchParams.set('reason', reason);
+  window.location.replace(url.toString());
+}
+
+function _clearSessionData() {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('devtasks_cache');
+    localStorage.removeItem('devtasks_pending');
+  } catch {
+    // no-op
+  }
+}
+
+function _logout() {
+  _clearSessionData();
+  _redirectToLogin('logged_out');
+}
+
 function _toast(msg, type = 'primary') {
   const toastEl = _el('app-toast');
   const msgEl   = _el('toast-message');
@@ -118,14 +148,12 @@ async function _handleEntSave(taskId, data) {
 }
 
 async function init() {
-  _session = (() => {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null'); } catch { return null; }
-  })();
-
-  if (!_session?.organizationId) {
-    _session = { id: 'local', name: 'Utilizador', email: 'user@local', role: 'admin', organizationId: 'org-local' };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(_session));
+  _session = _readSession();
+  if (!_session?.id || !_session?.email) {
+    _redirectToLogin('auth_required');
+    return;
   }
+  _orgScopeId = _session.organizationId ? String(_session.organizationId) : `personal-${_session.id}`;
 
   _initSidebarUser();
   _initTopbarUser();
@@ -205,7 +233,7 @@ async function init() {
     const task = {
       ...data,
       userId: _session.id,
-      organizationId: _session.organizationId,
+      organizationId: _orgScopeId,
       createdAt: now,
       updatedAt: now,
       comments: [], history: [], testCases: [],
@@ -285,11 +313,23 @@ function _initTopbarUser() {
   }
 }
 
-function _bindLogout() {}
+function _bindLogout() {
+  document.querySelectorAll('[data-logout]').forEach((el) => {
+    if (el.dataset.logoutBound === '1') return;
+    el.dataset.logoutBound = '1';
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      _logout();
+    });
+  });
+}
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function _loadOrgUsers() {
+  if (!_session.organizationId) {
+    return [{ ..._session }];
+  }
   try {
     const res = await fetch(`/users?organizationId=${_session.organizationId}`);
     return res.ok ? res.json() : [];
@@ -297,6 +337,7 @@ async function _loadOrgUsers() {
 }
 
 async function _loadOrgName() {
+  if (!_session.organizationId) return 'Espaço Pessoal';
   try {
     const res = await fetch(`/organizations/${_session.organizationId}`);
     if (res.ok) { const org = await res.json(); return org.name ?? ''; }
@@ -305,6 +346,17 @@ async function _loadOrgName() {
 }
 
 async function _loadOrgTasks() {
+  if (!_session.organizationId) {
+    try {
+      const [byUserRes, byScopeRes] = await Promise.all([
+        fetch(`/tasks?userId=${encodeURIComponent(_session.id)}`).catch(() => null),
+        fetch(`/tasks?organizationId=${encodeURIComponent(_orgScopeId)}`).catch(() => null),
+      ]);
+      const byUser  = byUserRes?.ok  ? await byUserRes.json()  : [];
+      const byScope = byScopeRes?.ok ? await byScopeRes.json() : [];
+      return [...new Map([...byUser, ...byScope].map(t => [String(t.id), t])).values()];
+    } catch { return []; }
+  }
   try {
     // primary: tasks tagged with this organizationId
     const res   = await fetch(`/tasks?organizationId=${_session.organizationId}`);
@@ -324,6 +376,12 @@ async function _loadOrgTasks() {
 }
 
 async function _loadProjects() {
+  if (!_session.organizationId) {
+    try {
+      const res = await fetch(`/projects?organizationId=${encodeURIComponent(_orgScopeId)}`);
+      return res.ok ? res.json() : [];
+    } catch { return []; }
+  }
   try {
     const res = await fetch(`/projects?organizationId=${_session.organizationId}`);
     return res.ok ? res.json() : [];
@@ -1001,7 +1059,7 @@ function _bindNewTask() {
       status:         'todo',
       labels:         [],
       userId:         Number(_el('ent-new-assignee')?.value) || _session.id,
-      organizationId: _session.organizationId,
+      organizationId: _orgScopeId,
       projectId:      projectId ? Number(projectId) : null,
       createdAt:      now,
       updatedAt:      now,
@@ -1590,7 +1648,7 @@ function _initProjectModal() {
       description:    _el('project-desc')?.value.trim() || '',
       color,
       memberIds,
-      organizationId: _session.organizationId,
+      organizationId: _orgScopeId,
       createdBy:      isEdit ? undefined : _session.id,
       createdAt:      isEdit ? undefined : now,
       updatedAt:      now,

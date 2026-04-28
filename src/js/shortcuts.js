@@ -1,4 +1,4 @@
-/**
+  /**
  * shortcuts.js — Command palette (Ctrl+K) and global keyboard shortcuts.
  *
  * Usage:

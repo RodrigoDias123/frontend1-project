@@ -98,18 +98,6 @@ function initLogin() {
         return;
       }
 
-      // Mode validation
-      if (mode === 'enterprise' && !user.organizationId) {
-        showError('Esta conta não está associada a nenhuma organização. Use o acesso Pessoal ou registe uma conta empresarial.');
-        setLoading(btn, false);
-        return;
-      }
-      if (mode === 'solo' && user.organizationId) {
-        showError('Esta é uma conta empresarial. Por favor use o modo Empresarial para entrar.');
-        setLoading(btn, false);
-        return;
-      }
-
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         id:             user.id,
         name:           user.name,
@@ -118,7 +106,7 @@ function initLogin() {
         plan:           user.plan ?? 'free',
         organizationId: user.organizationId ?? null,
       }));
-      window.location.href = user.organizationId ? 'app-enterprise.html' : 'app.html';
+      window.location.href = mode === 'enterprise' ? 'app-enterprise.html' : 'app.html';
     } catch {
       showError('Não foi possível ligar ao servidor. Tente novamente.');
       setLoading(btn, false);
@@ -249,10 +237,6 @@ async function _processGoogleUser({ sub: googleId, email, name, picture }) {
   }
 
   if (!user) {
-    if (mode === 'enterprise' && !isRegisterPage) {
-      showError('Não existe conta empresarial associada a este email Google. Registe uma organização primeiro.');
-      return;
-    }
     const res = await fetch('/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -271,14 +255,6 @@ async function _processGoogleUser({ sub: googleId, email, name, picture }) {
         body: JSON.stringify({ ...user, googleId, picture }),
       });
     }
-    if (mode === 'enterprise' && !user.organizationId) {
-      showError('Esta conta Google não está associada a nenhuma organização. Use o acesso Pessoal.');
-      return;
-    }
-    if (mode === 'solo' && user.organizationId) {
-      showError('Esta é uma conta empresarial. Por favor use o modo Empresarial para entrar.');
-      return;
-    }
   }
 
   localStorage.setItem(SESSION_KEY, JSON.stringify({
@@ -291,7 +267,7 @@ async function _processGoogleUser({ sub: googleId, email, name, picture }) {
     organizationId: user.organizationId ?? null,
   }));
 
-  window.location.href = user.organizationId ? 'app-enterprise.html' : 'app.html';
+  window.location.href = mode === 'enterprise' ? 'app-enterprise.html' : 'app.html';
 }
 
 function initGoogle() {

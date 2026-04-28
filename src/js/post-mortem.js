@@ -1,4 +1,4 @@
-/**
+  /**
  * post-mortem.js — Automatic documentation when a task is completed.
  *
  * Generates a structured Markdown post-mortem template based on task data.

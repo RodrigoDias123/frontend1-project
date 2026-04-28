@@ -11,7 +11,6 @@
  *  - Toast notifications
  */
 
-import { localFetch as fetch } from './localApi.js';
 import { getTasks, createTask, updateTask, deleteTask } from './api.js';
 import {
   saveCache,
@@ -39,10 +38,53 @@ let _pendingDeleteId = null;
 
 /** Bootstrap Modal instance for the delete-confirm dialog. */
 let _deleteModal = null;
+let _sessionUser = null;
+
+const SESSION_KEY = 'devtasks_user';
+
+function _readSession() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+function _redirectToLogin(reason = 'auth_required') {
+  const url = new URL('login.html', window.location.href);
+  if (reason) url.searchParams.set('reason', reason);
+  window.location.replace(url.toString());
+}
+
+function _ensureAuthenticated() {
+  _sessionUser = _readSession();
+  if (!_sessionUser?.id || !_sessionUser?.email) {
+    _redirectToLogin('auth_required');
+    return false;
+  }
+  return true;
+}
+
+function _clearSessionData() {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('devtasks_cache');
+    localStorage.removeItem('devtasks_pending');
+  } catch {
+    // no-op
+  }
+}
+
+function _logout() {
+  _clearSessionData();
+  _redirectToLogin('logged_out');
+}
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 async function init() {
+  if (!_ensureAuthenticated()) return;
+
   try {
     // 1. Unregister ALL Service Workers to clear stale caches
     if ('serviceWorker' in navigator) {
@@ -57,8 +99,7 @@ async function init() {
     window.addEventListener('offline', _handleOffline);
 
     // 3. Load tasks (scoped to the current user)
-    const _sessionUser = JSON.parse(localStorage.getItem('devtasks_user') ?? 'null');
-    const _userId = _sessionUser?.id ?? null;
+    const _userId = _sessionUser.id;
 
     try {
       _tasks = await getTasks(_userId);
@@ -162,20 +203,17 @@ async function init() {
     // 5. Bind global events
     _bindGlobalEvents();
 
-    // 6. Display user name & wire logout
-    _initSession();
-
-    // 7. Wire export
+    // 6. Wire export
     initExport(() => _tasks);
 
-    // 8. Pomodoro timer — logs time back to the task
+    // 7. Pomodoro timer — logs time back to the task
     initPomodoro(_handleTimeLog);
     document.addEventListener('task:pomodoro', (e) => {
       const task = _tasks.find((t) => String(t.id) === String(e.detail.taskId));
       if (task) startPomodoroFor(task);
     });
 
-    // 9. Command palette (Ctrl+K)
+    // 8. Command palette (Ctrl+K)
     initShortcuts([
       { label: 'Nova Tarefa (A Fazer)', icon: 'bi-plus-lg', shortcut: 'N',
         action: () => document.querySelector('[data-bs-target="#taskModal"][data-column="todo"]')?.click() },
@@ -209,10 +247,9 @@ async function _handleSave(taskId, data) {
 }
 
 async function _createTask(data) {
-  const _sessionUser = JSON.parse(localStorage.getItem('devtasks_user') ?? 'null');
   const payload = {
     ...data,
-    userId:       _sessionUser?.id ?? null,
+    userId:       _sessionUser.id,
     createdAt:    new Date().toISOString(),
     labels:       data.labels    ?? [],
     blockedBy:    data.blockedBy ?? [],
@@ -297,6 +334,15 @@ async function _deleteTask(taskId) {
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
 function _bindGlobalEvents() {
+  document.querySelectorAll('[data-logout]').forEach((el) => {
+    if (el.dataset.logoutBound === '1') return;
+    el.dataset.logoutBound = '1';
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      _logout();
+    });
+  });
+
   // ── task:edit (from <task-card>) ──
   document.addEventListener('task:edit', (e) => {
     const task = _tasks.find((t) => String(t.id) === String(e.detail.taskId));
@@ -376,7 +422,7 @@ async function _flushPendingOps() {
 
   // Reload fresh data from server
   try {
-    _tasks = await getTasks();
+    _tasks = await getTasks(_sessionUser.id);
     saveCache(_tasks);
     initBoard(_tasks);
     updateStats(_tasks);
@@ -416,16 +462,6 @@ async function _handleTimeLog(taskId, seconds) {
 
 function _esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-// ── Session ───────────────────────────────────────────────────────────────
-
-function _initSession() {
-  let raw = localStorage.getItem('devtasks_user');
-  if (!raw) {
-    const def = { id: 'local', name: 'Utilizador', email: 'user@local', role: 'admin' };
-    localStorage.setItem('devtasks_user', JSON.stringify(def));
-  }
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────
