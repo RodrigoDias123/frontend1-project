@@ -16,7 +16,9 @@ const DB_PREFIX = 'devtasks_db_';
 function getStore(name) {
   try {
     const raw = localStorage.getItem(`${DB_PREFIX}${name}`);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch (_) { return []; }
 }
 
@@ -105,7 +107,6 @@ export function localFetch(url, options = {}) {
     records[idx] = method === 'PUT'
       ? { id: records[idx].id, ...body }
       : { ...records[idx], ...body };
-    setStore(resource, records[idx]);
     setStore(resource, records);
     return makeResponse(records[idx]);
   }

@@ -29,12 +29,29 @@ export function initModal(onSave, getTasksFn) {
   _bsModal  = window.bootstrap.Modal.getOrCreateInstance(el);
 
   el.addEventListener('show.bs.modal', (e) => {
+    const trigger = e.relatedTarget;
+    if (trigger && typeof trigger.blur === 'function') trigger.blur();
+
     if (!e.relatedTarget) return; // programmatic open (openForEdit) — already set up
     _editTask = null;
     _resetForm();
     const col = e.relatedTarget.dataset.column ?? 'todo';
     document.getElementById('task-column').value = col;
     _populateDepSelector(null);
+  });
+
+  el.addEventListener('shown.bs.modal', () => {
+    const firstInput = document.getElementById('task-title');
+    if (firstInput && typeof firstInput.focus === 'function') {
+      firstInput.focus();
+    }
+  });
+
+  el.addEventListener('hide.bs.modal', () => {
+    const activeEl = document.activeElement;
+    if (activeEl && el.contains(activeEl) && typeof activeEl.blur === 'function') {
+      activeEl.blur();
+    }
   });
 
   el.addEventListener('hidden.bs.modal', _resetForm);
@@ -65,6 +82,11 @@ export function initModal(onSave, getTasksFn) {
  * @param {Object} task
  */
 export function openForEdit(task) {
+  const activeEl = document.activeElement;
+  if (activeEl && typeof activeEl.blur === 'function') {
+    activeEl.blur();
+  }
+
   _editTask = task;
   _resetForm();
   _populateDepSelector(task);
@@ -277,4 +299,3 @@ function _handleSubmit(e) {
 function _esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-

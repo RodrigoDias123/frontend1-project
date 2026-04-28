@@ -32,15 +32,28 @@ Um projeto de gestão de tarefas e projetos para programadores e equipas, com mo
 
 ```text
 .
+├── .dockerignore
+├── .DS_Store
+├── Makefile
+├── README.md
 ├── app-enterprise.html
 ├── app.html
-├── index.html
-├── manifest.json
-├── service-worker.js
 ├── data/
 │   └── db.json
+├── docker-compose.yml
+├── favicon.ico
+├── index.html
+├── login.html
+├── manifest.json
 ├── public/
 │   └── icons/
+│       ├── icon-192.png
+│       └── icon-512.png
+├── register.html
+├── scripts/
+│   ├── dev-task
+│   └── menu.sh
+├── service-worker.js
 ├── src/
 │   ├── components/
 │   │   ├── app-navbar.js
@@ -49,8 +62,11 @@ Um projeto de gestão de tarefas e projetos para programadores e equipas, com mo
 │   │   ├── enterprise-app.css
 │   │   ├── features.css
 │   │   ├── landing.css
+│   │   ├── login.css
+│   │   ├── register.css
 │   │   └── styles.css
 │   └── js/
+│       ├── .DS_Store
 │       ├── api.js
 │       ├── app-enterprise.js
 │       ├── app.js
@@ -70,9 +86,7 @@ Um projeto de gestão de tarefas e projetos para programadores e equipas, com mo
 │       ├── shortcuts.js
 │       ├── stats.js
 │       ├── storage.js
-│       ├── tech-debt.js
-│       └── register-empresa.js
-└── .dockerignore
+│       └── tech-debt.js
 ```
 
 ## Tecnologias usadas

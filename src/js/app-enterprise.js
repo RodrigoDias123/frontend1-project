@@ -30,6 +30,7 @@ let _orgScopeId = null;
 let _filter   = 'all';
 let _activeId = null;
 let _activeTab = 'comment';
+const MOBILE_BREAKPOINT = 900;
 
 // ── Colour palettes ───────────────────────────────────────────────────────────
 
@@ -87,6 +88,23 @@ function _fmtHms(totalSeconds) {
   if (h > 0) return `${h}h`;
   if (m > 0) return `${m}m`;
   return '0m';
+}
+
+function _isCompactLayout() {
+  return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
+}
+
+function _closeMobileDetail() {
+  const contentWrap = document.querySelector('.ent-content');
+  const detailEl = _el('ent-detail');
+  contentWrap?.classList.remove('ent-content--detail-open');
+  detailEl?.classList.remove('ent-detail--visible');
+}
+
+function _syncResponsiveLayout() {
+  if (!_isCompactLayout()) {
+    _closeMobileDetail();
+  }
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -177,14 +195,25 @@ async function init() {
   _updateSidebarCounts();
   _renderFeed();
 
-  // Default to calendar view
-  _switchView('calendar');
+  // Default view
+  if (_isCompactLayout()) {
+    _switchView('feed');
+    document.querySelectorAll('.ent-view-tab').forEach(b => b.classList.remove('ent-view-tab--active'));
+    document.querySelector('.ent-view-tab[data-view="feed"]')?.classList.add('ent-view-tab--active');
+  } else {
+    _switchView('calendar');
+    document.querySelectorAll('.ent-view-tab').forEach(b => b.classList.remove('ent-view-tab--active'));
+    document.querySelector('.ent-view-tab[data-view="calendar"]')?.classList.add('ent-view-tab--active');
+  }
+  window.addEventListener('resize', _syncResponsiveLayout);
+  _syncResponsiveLayout();
 
   // Bind detail-specific events (once)
   _bindCommentForm();
   _bindStatusChange();
   _bindLogTime();
   _bindDetailNav();
+  _bindMobileDetailBack();
   _bindTabs();
 
   // Bind new task
@@ -668,8 +697,13 @@ function _showDetail(taskId) {
 
   // Show content, hide empty
   _el('ent-detail-empty')?.classList.add('d-none');
-  const content = _el('ent-detail-content');
-  if (content) { content.classList.remove('d-none'); content.style.display = 'flex'; }
+  const detailContent = _el('ent-detail-content');
+  if (detailContent) { detailContent.classList.remove('d-none'); detailContent.style.display = 'flex'; }
+
+  if (_isCompactLayout()) {
+    document.querySelector('.ent-content')?.classList.add('ent-content--detail-open');
+    _el('ent-detail')?.classList.add('ent-detail--visible');
+  }
 
   _renderDetailHeader(task);
   _switchTab(_activeTab, task);
@@ -1010,6 +1044,12 @@ function _bindDetailNav() {
   _el('btn-detail-next')?.addEventListener('click', () => _navDetail(+1));
 }
 
+function _bindMobileDetailBack() {
+  _el('btn-detail-back-mobile')?.addEventListener('click', () => {
+    _closeMobileDetail();
+  });
+}
+
 function _navDetail(dir) {
   const sorted = [..._filteredTasks()].sort((a, b) =>
     new Date(b.updatedAt ?? b.createdAt ?? 0) - new Date(a.updatedAt ?? a.createdAt ?? 0)
@@ -1178,6 +1218,7 @@ function _switchView(view) {
   const backBtn  = _el('btn-back-from-analytics');
 
   if (view === 'calendar') {
+    _closeMobileDetail();
     calView?.classList.remove('d-none');
     feedEl?.classList.add('d-none');
     detailEl?.classList.add('d-none');
@@ -1185,6 +1226,7 @@ function _switchView(view) {
     backBtn?.classList.add('d-none');
     _renderCalendar();
   } else if (view === 'analytics') {
+    _closeMobileDetail();
     calView?.classList.add('d-none');
     feedEl?.classList.add('d-none');
     detailEl?.classList.add('d-none');
@@ -1193,7 +1235,11 @@ function _switchView(view) {
   } else {
     calView?.classList.add('d-none');
     feedEl?.classList.remove('d-none');
-    detailEl?.classList.remove('d-none');
+    if (_isCompactLayout()) {
+      _closeMobileDetail();
+    } else {
+      detailEl?.classList.remove('d-none');
+    }
     if (statsPanel) statsPanel.hidden = true;
     backBtn?.classList.add('d-none');
   }

@@ -18,7 +18,7 @@
 <body class="ent-app">
 
   <!-- SweetAlert2 -->
-  <script src="public/sweetalert2.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
 
   <!-- ===== SIDEBAR ===== -->
   <aside class="ent-sidebar" aria-label="Navegação lateral">
@@ -408,7 +408,12 @@
         <div id="ent-detail-content" class="d-none" style="display:flex!important;flex-direction:column;flex:1;overflow:hidden">
 
           <div class="ent-detail-topbar">
-            <span class="ent-breadcrumb" id="ent-detail-breadcrumb" aria-label="Localização"></span>
+            <div class="d-flex align-items-center gap-2" style="min-width:0">
+              <button class="ent-icon-btn ent-detail-back-mobile d-none" id="btn-detail-back-mobile" title="Voltar à lista" aria-label="Voltar à lista">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+              </button>
+              <span class="ent-breadcrumb" id="ent-detail-breadcrumb" aria-label="Localização"></span>
+            </div>
             <div class="d-flex gap-1">
               <button class="ent-icon-btn" id="btn-detail-prev" title="Tarefa anterior">
                 <i class="bi bi-chevron-up" aria-hidden="true"></i>

@@ -71,7 +71,8 @@ body.ent-app .text-muted {
 .ent-app {
   display: grid;
   grid-template-columns: 220px 1fr;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   overflow: hidden;
   background: #0d1117;
   color: #c9d1d9;
@@ -80,7 +81,7 @@ body.ent-app .text-muted {
 
 .ent-main {
   display: grid;
-  grid-template-rows: 48px auto 1fr;
+  grid-template-rows: minmax(48px, auto) auto 1fr;
   min-height: 0;
 }
 
@@ -98,7 +99,8 @@ body.ent-app .text-muted {
   border-right: 1px solid #21262d;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -307,12 +309,14 @@ body.ent-app .text-muted {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .ent-topbar-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .btn-ent-new {
@@ -520,6 +524,10 @@ body.ent-app .text-muted {
 }
 
 .ent-search-wrap input::placeholder { color: #484f58; }
+
+.ent-detail-back-mobile {
+  display: none;
+}
 
 .ent-icon-btn {
   background: none;
@@ -1358,16 +1366,150 @@ body.ent-app .text-muted {
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
+  .ent-topbar {
+    padding: 0.4rem 0.65rem;
+    gap: 0.45rem;
+  }
+
+  .ent-topbar-left {
+    gap: 0.4rem;
+  }
+
+  .ent-topbar-right {
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .ent-topbar-right::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ent-view-tabs {
+    margin-left: 0;
+  }
+
+  .ent-view-tab {
+    font-size: 0.8rem;
+    padding: 0.55rem 0.5rem;
+  }
+
+  .ent-search-wrap {
+    min-width: 150px;
+  }
+
   .ent-content {
     grid-template-columns: 1fr;
+    position: relative;
   }
-  .ent-detail { display: none; }
-  .ent-detail--visible { display: flex !important; }
+
+  .ent-feed {
+    display: flex;
+  }
+
+  .ent-detail {
+    display: none;
+    border-right: none;
+  }
+
+  .ent-content.ent-content--detail-open .ent-feed {
+    display: none;
+  }
+
+  .ent-content.ent-content--detail-open .ent-detail,
+  .ent-detail--visible {
+    display: flex !important;
+  }
+
+  .ent-detail-back-mobile {
+    display: inline-flex !important;
+  }
+
+  .ent-detail-topbar {
+    padding: 0.55rem 0.85rem;
+  }
+
+  .ent-detail-scroll {
+    padding: 1rem;
+  }
+
+  .ent-detail-title {
+    font-size: 1rem;
+  }
+
+  .ent-time-dates {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 }
 
 @media (max-width: 640px) {
-  .ent-app { grid-template-columns: 1fr; }
-  .ent-sidebar { display: none; }
+  .ent-app {
+    grid-template-columns: 1fr;
+  }
+
+  .ent-sidebar {
+    display: none;
+  }
+
+  .ent-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem 0.55rem;
+  }
+
+  .ent-topbar-left,
+  .ent-topbar-right {
+    width: 100%;
+  }
+
+  .ent-topbar-left {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .ent-topbar-right {
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 0.3rem;
+  }
+
+  .ent-search-wrap {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.2rem 0.5rem;
+  }
+
+  #ent-topbar-project-label {
+    display: none;
+  }
+
+  .ent-notif-panel {
+    width: min(92vw, 340px);
+    max-width: 92vw;
+  }
+
+  .ent-cal-header {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .ent-cal-month {
+    min-width: auto;
+    flex: 1;
+    margin: 0;
+    font-size: 0.92rem;
+  }
+
+  .ent-cal-grid {
+    overflow-x: auto;
+  }
+
+  .ent-cal-weekdays,
+  .ent-cal-days {
+    min-width: 42rem;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════

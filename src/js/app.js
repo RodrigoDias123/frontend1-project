@@ -80,6 +80,34 @@ function _logout() {
   _redirectToLogin('logged_out');
 }
 
+function _isLocalOnlyTaskId(taskId) {
+  const id = String(taskId ?? '');
+  return id.startsWith('offline-') || id.startsWith('exemplo-');
+}
+
+function _normalizeStatus(status) {
+  const s = String(status ?? '').toLowerCase();
+  if (s === 'doing' || s === 'progress' || s === 'inprogress' || s === 'in-progress') return 'doing';
+  if (s === 'done' || s === 'completed' || s === 'complete') return 'done';
+  return 'todo';
+}
+
+function _normalizeTask(task) {
+  return { ...task, status: _normalizeStatus(task?.status) };
+}
+
+function _normalizeTaskList(rawTasks, userId) {
+  if (!Array.isArray(rawTasks)) return [];
+  return rawTasks
+    .filter(Boolean)
+    .map(_normalizeTask)
+    .filter((t) => {
+      if (_isLocalOnlyTaskId(t.id)) return true;
+      if (t.userId == null) return false;
+      return String(t.userId) === String(userId);
+    });
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -102,10 +130,10 @@ async function init() {
     const _userId = _sessionUser.id;
 
     try {
-      _tasks = await getTasks(_userId);
+      _tasks = _normalizeTaskList(await getTasks(_userId), _userId);
       saveCache(_tasks);
     } catch (_) {
-      _tasks = getCache();
+      _tasks = _normalizeTaskList(getCache(), _userId);
       if (!navigator.onLine) _toast('Sem ligação — a trabalhar offline.', 'info');
     }
 
@@ -143,7 +171,7 @@ async function init() {
           title: 'Bug: Corrigir erro de login',
           description: 'Usuários não conseguem acessar com senha incorreta.',
           priority: 'media',
-          status: 'progress',
+          status: 'doing',
           labels: ['bug'],
           userId: _userId,
           createdAt: new Date().toISOString(),
@@ -156,7 +184,7 @@ async function init() {
           title: 'Automação: Backup diário',
           description: 'Verifique se o backup automático está funcionando.',
           priority: 'baixa',
-          status: 'progress',
+          status: 'doing',
           labels: ['automação'],
           userId: _userId,
           createdAt: new Date().toISOString(),
@@ -192,6 +220,7 @@ async function init() {
         }
       ];
       _tasks = exemplos;
+      saveCache(_tasks);
     }
 
     // 4. Initialise UI modules
@@ -249,6 +278,7 @@ async function _handleSave(taskId, data) {
 async function _createTask(data) {
   const payload = {
     ...data,
+    status:       _normalizeStatus(data.status),
     userId:       _sessionUser.id,
     createdAt:    new Date().toISOString(),
     labels:       data.labels    ?? [],
@@ -294,9 +324,22 @@ async function _createTask(data) {
 async function _editTask(taskId, data) {
   const existing = _tasks.find((t) => String(t.id) === String(taskId));
   if (!existing) return;
-  const updated   = { ...existing, ...data };
-  const oldStatus = existing.status;
-  const newStatus = updated.status;
+  const updated   = {
+    ...existing,
+    ...data,
+    status: _normalizeStatus(data.status ?? existing.status),
+  };
+
+  if (_isLocalOnlyTaskId(taskId)) {
+    _tasks = _tasks.map((t) => (String(t.id) === String(taskId) ? updated : t));
+    saveCache(_tasks);
+    updateCacheItem(updated);
+    updateTaskCard(updated);
+    updateStats(_tasks);
+    _toast('Tarefa local atualizada.', 'info');
+    return;
+  }
+
   try {
     const saved = await updateTask(taskId, updated);
     _tasks = _tasks.map((t) => (String(t.id) === String(taskId) ? saved : t));
@@ -318,10 +361,12 @@ async function _editTask(taskId, data) {
 }
 
 async function _deleteTask(taskId) {
-  try {
-    await deleteTask(taskId);
-  } catch (_) {
-    addPendingOp({ type: 'delete', id: taskId });
+  if (!_isLocalOnlyTaskId(taskId)) {
+    try {
+      await deleteTask(taskId);
+    } catch (_) {
+      addPendingOp({ type: 'delete', id: taskId });
+    }
   }
   _tasks = _tasks.filter((t) => String(t.id) !== String(taskId));
   saveCache(_tasks);
@@ -374,11 +419,15 @@ function _bindGlobalEvents() {
     const task = _tasks.find((t) => String(t.id) === String(taskId));
     if (!task) return;
 
-    const oldStatus = task.status;
     const updated   = { ...task, status: newStatus };
     task.status = newStatus; // mutate in-place for instant UI consistency
     updateStats(_tasks);
 
+    if (_isLocalOnlyTaskId(taskId)) {
+      saveCache(_tasks);
+      updateCacheItem(updated);
+      return;
+    }
 
     try {
       const saved = await updateTask(taskId, updated);
@@ -411,8 +460,10 @@ async function _flushPendingOps() {
         const { id, ...fields } = op.data; // strip temporary offline id
         await createTask(fields);
       } else if (op.type === 'update') {
+        if (_isLocalOnlyTaskId(op.id)) continue;
         await updateTask(op.id, op.data);
       } else if (op.type === 'delete') {
+        if (_isLocalOnlyTaskId(op.id)) continue;
         await deleteTask(op.id);
       }
     } catch (_) { /* skip if still unreachable */ }
@@ -422,7 +473,7 @@ async function _flushPendingOps() {
 
   // Reload fresh data from server
   try {
-    _tasks = await getTasks(_sessionUser.id);
+    _tasks = (await getTasks(_sessionUser.id)).map(_normalizeTask);
     saveCache(_tasks);
     initBoard(_tasks);
     updateStats(_tasks);

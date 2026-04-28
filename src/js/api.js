@@ -6,15 +6,27 @@ import { localFetch as localDbFetch } from './localApi.js';
  */
 
 const API_ROOT = 'https://69f0f801c1533dbedc9dfea4.mockapi.io';
-const BASE_URL = `${API_ROOT}/tasks`;
+const HOSTNAME = typeof window !== 'undefined' ? (window.location?.hostname ?? '') : '';
+const IS_LOCAL_DEV = HOSTNAME === '' || HOSTNAME === 'localhost' || HOSTNAME === '127.0.0.1';
+
+const TASKS_BASE_CANDIDATES = [
+  `${API_ROOT}/tasks`,
+  `${API_ROOT}/api/v1/tasks`,
+  `${API_ROOT}/tasks/tasks`,
+  `${API_ROOT}/api/tasks`,
+];
 const USERS_BASE_CANDIDATES = [
   `${API_ROOT}/users`,
-  `${API_ROOT}/tasks/users`,
   `${API_ROOT}/api/v1/users`,
+  `${API_ROOT}/tasks/users`,
   `${API_ROOT}/api/users`,
 ];
 
 const fetchApi = (...args) => fetch(...args);
+let _usersBaseResolved = null;
+let _tasksBaseResolved = null;
+let _forceLocalUsers = IS_LOCAL_DEV;
+let _forceLocalTasks = IS_LOCAL_DEV;
 
 function _normalizeEmail(email) {
   return String(email ?? '').trim().toLowerCase();
@@ -29,10 +41,25 @@ async function _assertOk(res, label) {
 }
 
 async function _fetchUsersEndpoint(path = '', options) {
+  if (_forceLocalUsers) return localDbFetch(`/users${path}`, options);
+
+  if (_usersBaseResolved) {
+    try {
+      const res = await fetchApi(`${_usersBaseResolved}${path}`, options);
+      if (res.ok) return res;
+    } catch (_) {
+      // fallback for this call below
+    }
+    _usersBaseResolved = null;
+  }
+
   for (const base of USERS_BASE_CANDIDATES) {
     try {
       const res = await fetchApi(`${base}${path}`, options);
-      if (res.ok) return res;
+      if (res.ok) {
+        _usersBaseResolved = base;
+        return res;
+      }
     } catch (_) {
       // tenta próximo candidato
     }
@@ -40,7 +67,37 @@ async function _fetchUsersEndpoint(path = '', options) {
 
   // Fallback local para não bloquear auth quando a coleção remota /users
   // não existir ou estiver com validações incompatíveis.
+  _forceLocalUsers = true;
   return localDbFetch(`/users${path}`, options);
+}
+
+async function _fetchTasksEndpoint(path = '', options) {
+  if (_forceLocalTasks) return localDbFetch(`/tasks${path}`, options);
+
+  if (_tasksBaseResolved) {
+    try {
+      const res = await fetchApi(`${_tasksBaseResolved}${path}`, options);
+      if (res.ok) return res;
+    } catch (_) {
+      // fallback for this call below
+    }
+    _tasksBaseResolved = null;
+  }
+
+  for (const base of TASKS_BASE_CANDIDATES) {
+    try {
+      const res = await fetchApi(`${base}${path}`, options);
+      if (res.ok) {
+        _tasksBaseResolved = base;
+        return res;
+      }
+    } catch (_) {
+      // tenta próximo candidato
+    }
+  }
+
+  _forceLocalTasks = true;
+  return localDbFetch(`/tasks${path}`, options);
 }
 
 // USERS API
@@ -135,8 +192,8 @@ export async function deleteUser(id) {
  * @returns {Promise<Object[]>}
  */
 export async function getTasks(userId) {
-  const url = userId ? `${BASE_URL}?userId=${encodeURIComponent(userId)}` : BASE_URL;
-  const res = await fetchApi(url);
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  const res = await _fetchTasksEndpoint(query);
   await _assertOk(res, 'GET /tasks');
   return res.json();
 }
@@ -147,7 +204,7 @@ export async function getTasks(userId) {
  * @returns {Promise<Object>}  Created task with server-assigned id
  */
 export async function createTask(data) {
-  const res = await fetchApi(BASE_URL, {
+  const res = await _fetchTasksEndpoint('', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -163,7 +220,7 @@ export async function createTask(data) {
  * @returns {Promise<Object>}   Updated task
  */
 export async function updateTask(id, data) {
-  const res = await fetchApi(`${BASE_URL}/${id}`, {
+  const res = await _fetchTasksEndpoint(`/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -178,6 +235,6 @@ export async function updateTask(id, data) {
  * @returns {Promise<void>}
  */
 export async function deleteTask(id) {
-  const res = await fetchApi(`${BASE_URL}/${id}`, { method: 'DELETE' });
+  const res = await _fetchTasksEndpoint(`/${id}`, { method: 'DELETE' });
   await _assertOk(res, `DELETE /tasks/${id}`);
 }

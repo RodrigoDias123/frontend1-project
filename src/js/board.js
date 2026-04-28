@@ -9,6 +9,7 @@ const COLUMNS = /** @type {const} */ (['todo', 'doing', 'done']);
 
 /** Full task list, kept in sync to compute blocked state. */
 let _allTasks = [];
+const _sortables = new Map();
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
@@ -167,7 +168,9 @@ function _initSortable() {
   }
 
   COLUMNS.forEach((col) => {
-    Sortable.create(listEl(col), {
+    const list = listEl(col);
+    _sortables.get(col)?.destroy();
+    const sortable = Sortable.create(list, {
       group:       'kanban',
       animation:   150,
       ghostClass:  'sortable-ghost',
@@ -191,6 +194,6 @@ function _initSortable() {
         );
       },
     });
+    _sortables.set(col, sortable);
   });
 }
-
