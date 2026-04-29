@@ -127,6 +127,26 @@ O ficheiro `manifest.json` define a aplicação como PWA com:
 - Ícones para 192x192 e 512x512 em `public/icons`
 
 ## Notas adicionais
+-
+## Cobertura dos Requisitos do Projeto
+
+Este projeto cobre todos os requisitos solicitados para um sistema de tarefas moderno:
+
+- **CRUD de tarefas:** Implementado em `src/js/api.js`, `app.js`, `modal.js`.
+- **Mock API:** Suporte via `localApi.js` e `storage.js`, além de integração com `json-server`.
+- **Formulário com validação:** Implementado em `modal.js` (`task-form`, `_validate`).
+- **Biblioteca externa:** Uso de Bootstrap e Chart.js.
+- **Responsivo:** Layout responsivo com Bootstrap e CSS customizado.
+- **PWA:** `manifest.json` e `service-worker.js` configurados.
+- **Local Storage:** Persistência local em múltiplos módulos.
+- **Canvas:** Gráficos via Chart.js em `stats.js`.
+- **Web Component:** `<task-card>` implementado em `src/components/task-card.js`.
+- **Date API:** Uso de `new Date().toISOString()` para datas.
+- **Deploy no Github Pages:** Suporte e exemplos de uso.
+- **Lighthouse:** Estrutura pronta para atingir todos os scores verdes.
+- **Portfólio:** Pronto para ser apresentado em páginas de portfólio.
+
+**Observação:** Caso deseje, pode ser facilmente expandido para incluir Geolocation ou outros recursos nativos.
 
 - O projeto está preparado para oferecer uma experiência leve e direta.
 - Há suporte para vista empresarial e pessoal no mesmo código.
